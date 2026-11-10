@@ -96,7 +96,14 @@ function Tab({
   onCloseMenu: () => void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
+  // 탭 줄은 가로 스크롤 영역이라 그 안에 absolute로 띄우면 잘린다. 화면 기준(fixed)으로 띄운다
+  const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
   const s = useEditorStore.getState;
+
+  const openAtTab = () => {
+    const r = menuRef.current?.getBoundingClientRect();
+    if (r) setMenuPos({ x: r.left, y: r.bottom + 4 });
+  };
 
   const confirmDelete = () => {
     onCloseMenu();
@@ -111,7 +118,11 @@ function Tab({
       if (!menuRef.current?.contains(e.target as Node)) onCloseMenu();
     };
     window.addEventListener("pointerdown", close);
-    return () => window.removeEventListener("pointerdown", close);
+    window.addEventListener("resize", onCloseMenu);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("resize", onCloseMenu);
+    };
   }, [menuOpen, onCloseMenu]);
 
   return (
@@ -120,6 +131,7 @@ function Tab({
       // 마우스 오른쪽 클릭으로도 메뉴를 연다
       onContextMenu={(e) => {
         e.preventDefault();
+        setMenuPos({ x: e.clientX, y: e.clientY });
         onOpenMenu();
       }}
       className={`group relative flex shrink-0 items-center rounded-md ${
@@ -159,7 +171,10 @@ function Tab({
         type="button"
         aria-label={`${layout.name} 메뉴`}
         aria-expanded={menuOpen}
-        onClick={onToggleMenu}
+        onClick={() => {
+          openAtTab();
+          onToggleMenu();
+        }}
         title="메뉴 (오른쪽 클릭으로도 열려요)"
         className="rounded px-1.5 py-1 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
       >
@@ -179,7 +194,8 @@ function Tab({
       {menuOpen && (
         <div
           role="menu"
-          className="absolute top-full left-0 z-20 mt-1 flex w-44 flex-col rounded-lg bg-white p-1 text-sm shadow-lg ring-1 ring-neutral-200"
+          style={{ left: menuPos.x, top: menuPos.y }}
+          className="fixed z-50 flex w-44 flex-col rounded-lg bg-white p-1 text-sm shadow-lg ring-1 ring-neutral-200"
         >
           <MenuItem onClick={onStartRename}>이름 바꾸기</MenuItem>
           <MenuItem
