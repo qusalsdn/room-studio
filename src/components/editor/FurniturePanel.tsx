@@ -8,6 +8,7 @@ import {
   type CatalogItem,
   type FurnitureCategory,
 } from "@/catalog/furniture";
+import { bounds } from "@/geometry/polygon";
 import { formatLength } from "@/lib/format";
 import { useEditorStore } from "@/store/editorStore";
 import { Button, LengthField, Section, TextField } from "./fields";
@@ -16,9 +17,19 @@ import { Button, LengthField, Section, TextField } from "./fields";
 function viewCenter() {
   const s = useEditorStore.getState();
   const el = document.querySelector("[data-floorplan-canvas]");
-  const r = el?.getBoundingClientRect();
-  const cx = r ? r.width / 2 : 400;
-  const cy = r ? r.height / 2 : 300;
+  if (!el) {
+    // 3D만 보고 있을 때는 집 가운데에 놓는다
+    const pts = s.doc.floorplan.rooms.flatMap((room) => room.points);
+    if (pts.length === 0) return { x: 0, y: 0 };
+    const b = bounds(pts);
+    return {
+      x: Math.round((b.minX + b.maxX) / 20) * 10,
+      y: Math.round((b.minY + b.maxY) / 20) * 10,
+    };
+  }
+  const r = el.getBoundingClientRect();
+  const cx = r.width / 2;
+  const cy = r.height / 2;
   const { scale, x, y } = s.viewport;
   return { x: Math.round((cx - x) / scale / 10) * 10, y: Math.round((cy - y) / scale / 10) * 10 };
 }

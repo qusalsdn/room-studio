@@ -38,6 +38,8 @@ export type Tool = "select" | "rect";
 /** structure: 방·벽·문 편집 / furniture: 가구 배치 (구조는 잠김) */
 export type EditorMode = "structure" | "furniture";
 
+export type ViewMode = "2d" | "3d" | "split";
+
 export type Selection =
   | { kind: "room"; roomId: string }
   | { kind: "edge"; roomId: string; edgeIndex: number }
@@ -61,6 +63,7 @@ export type EditorState = {
   txBase: HouseDocument | null;
 
   mode: EditorMode;
+  view: ViewMode;
   tool: Tool;
   selection: Selection | null;
   hoveredEdge: { roomId: string; edgeIndex: number } | null;
@@ -106,6 +109,7 @@ export type EditorState = {
 
   // UI
   setMode: (mode: EditorMode) => void;
+  setView: (view: ViewMode) => void;
   setTool: (tool: Tool) => void;
   select: (selection: Selection | null) => void;
   setHoveredEdge: (edge: EditorState["hoveredEdge"]) => void;
@@ -142,6 +146,7 @@ export const useEditorStore = create<EditorState>()(
       future: [],
       txBase: null,
       mode: "structure",
+      view: "2d",
       tool: "select",
       selection: null,
       hoveredEdge: null,
@@ -392,6 +397,7 @@ export const useEditorStore = create<EditorState>()(
       },
 
       setMode: (mode) => set({ mode, tool: "select", selection: null, hoveredEdge: null }),
+      setView: (view) => set({ view }),
       setTool: (tool) => set({ tool }),
       select: (selection) => set({ selection }),
       setHoveredEdge: (hoveredEdge) => set({ hoveredEdge }),

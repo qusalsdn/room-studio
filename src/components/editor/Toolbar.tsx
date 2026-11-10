@@ -10,6 +10,7 @@ export function Toolbar() {
   const canRedo = useEditorStore((s) => s.future.length > 0);
   const scale = useEditorStore((s) => s.viewport.scale);
   const mode = useEditorStore((s) => s.mode);
+  const view = useEditorStore((s) => s.view);
   const s = useEditorStore.getState;
 
   return (
@@ -41,6 +42,34 @@ export function Toolbar() {
             className={`rounded-md px-3 py-1 font-medium transition-colors ${
               mode === value
                 ? "bg-white text-neutral-900 shadow-sm"
+                : "text-neutral-500 hover:text-neutral-800"
+            }`}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+
+      <div
+        role="group"
+        aria-label="보기"
+        className="ml-3 flex rounded-lg border border-neutral-200 p-0.5 text-sm"
+      >
+        {(
+          [
+            ["2d", "2D"],
+            ["3d", "3D"],
+            ["split", "나란히"],
+          ] as const
+        ).map(([value, text]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={view === value}
+            onClick={() => s().setView(value)}
+            className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+              view === value
+                ? "bg-neutral-900 text-white"
                 : "text-neutral-500 hover:text-neutral-800"
             }`}
           >
