@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { CompareView } from "./CompareView";
+import { HelpDialogs } from "./HelpDialogs";
 import { Inspector } from "./Inspector";
 import { LayoutTabs } from "./LayoutTabs";
 import { Sidebar } from "./Sidebar";
@@ -30,6 +31,7 @@ export function Editor() {
   const view = useEditorStore((s) => s.view);
   return (
     <div className="flex h-dvh flex-col bg-white text-neutral-900">
+      <HelpDialogs />
       <Toolbar />
       <LayoutTabs />
       {view === "compare" ? (

@@ -89,6 +89,8 @@ export type EditorState = {
   showWarnings: boolean;
   /** 경고 목록에서 마우스를 올린 경고 (도면에서 강조) */
   focusedWarningId: string | null;
+  /** 열려 있는 도움말 창 */
+  help: "guide" | "shortcuts" | null;
   tool: Tool;
   selection: Selection | null;
   hoveredEdge: { roomId: string; edgeIndex: number } | null;
@@ -153,6 +155,7 @@ export type EditorState = {
   setView: (view: ViewMode) => void;
   setShowWarnings: (show: boolean) => void;
   setFocusedWarning: (id: string | null) => void;
+  setHelp: (help: EditorState["help"]) => void;
   setTool: (tool: Tool) => void;
   select: (selection: Selection | null) => void;
   setHoveredEdge: (edge: EditorState["hoveredEdge"]) => void;
@@ -201,6 +204,7 @@ export const useEditorStore = create<EditorState>()(
       view: "2d",
       showWarnings: true,
       focusedWarningId: null,
+      help: null,
       tool: "select",
       selection: null,
       hoveredEdge: null,
@@ -529,6 +533,7 @@ export const useEditorStore = create<EditorState>()(
       setView: (view) => set({ view }),
       setShowWarnings: (showWarnings) => set({ showWarnings }),
       setFocusedWarning: (focusedWarningId) => set({ focusedWarningId }),
+      setHelp: (help) => set({ help }),
       setTool: (tool) => set({ tool }),
       select: (selection) => set({ selection }),
       setHoveredEdge: (hoveredEdge) => set({ hoveredEdge }),

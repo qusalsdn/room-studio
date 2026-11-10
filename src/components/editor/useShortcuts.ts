@@ -46,7 +46,12 @@ export function useShortcuts() {
         if (sel?.kind === "furniture") s.duplicateFurniture(sel.itemId);
         return;
       }
-      if (mod || e.altKey) return;
+      if (e.key === "?") {
+        e.preventDefault();
+        s.setHelp(s.help === "shortcuts" ? null : "shortcuts");
+        return;
+      }
+      if (mod || e.altKey || s.help) return;
 
       if (key === "1") s.setMode("structure");
       else if (key === "2") s.setMode("furniture");

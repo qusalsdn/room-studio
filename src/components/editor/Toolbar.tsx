@@ -99,6 +99,9 @@ export function Toolbar() {
           ↷ 다시 실행
         </Button>
         <span className="mx-1 h-5 w-px bg-neutral-200" />
+        <Button variant="ghost" onClick={() => s().setHelp("guide")} title="사용 안내 (단축키는 ?)">
+          도움말
+        </Button>
         <ExportMenu />
         <ShareButton />
         <span className="mx-1 h-5 w-px bg-neutral-200" />
