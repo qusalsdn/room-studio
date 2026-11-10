@@ -10,7 +10,7 @@ import {
 } from "@/catalog/furniture";
 import { formatLength } from "@/lib/format";
 import { useEditorStore } from "@/store/editorStore";
-import { Section } from "./fields";
+import { Button, LengthField, Section, TextField } from "./fields";
 
 /** 지금 화면 가운데의 도면 좌표 */
 function viewCenter() {
@@ -36,6 +36,10 @@ function Thumb({ item }: { item: CatalogItem }) {
           height: Math.max(h, 4),
           background: item.color,
           boxShadow: "inset 0 0 0 1px rgba(39,39,42,0.35)",
+          clipPath:
+            item.symbol === "l-shape"
+              ? "polygon(0 0, 100% 0, 100% 43%, 43% 43%, 43% 100%, 0 100%)"
+              : undefined,
         }}
       />
     </span>
@@ -46,7 +50,8 @@ export function FurniturePanel() {
   const unit = useEditorStore((s) => s.doc.settings.displayUnit);
   const [query, setQuery] = useState("");
   const q = query.trim();
-  const filtered = q ? FURNITURE_CATALOG.filter((c) => c.name.includes(q)) : FURNITURE_CATALOG;
+  const visible = FURNITURE_CATALOG.filter((c) => !c.hidden);
+  const filtered = q ? visible.filter((c) => c.name.includes(q)) : visible;
   const categories = Object.keys(CATEGORY_LABELS) as FurnitureCategory[];
 
   return (
@@ -65,6 +70,7 @@ export function FurniturePanel() {
           실측값으로 바꿀 수 있어요.
         </p>
       </Section>
+      <CustomFurnitureForm />
       {categories.map((cat) => {
         const list = filtered.filter((c) => c.category === cat);
         if (list.length === 0) return null;
@@ -108,5 +114,57 @@ export function FurniturePanel() {
         </ul>
       </Section>
     </>
+  );
+}
+
+/** 목록에 없는 물건을 이름과 치수만으로 만든다 */
+function CustomFurnitureForm() {
+  const unit = useEditorStore((s) => s.doc.settings.displayUnit);
+  const [spec, setSpec] = useState({ name: "새 가구", width: 600, depth: 600, height: 600 });
+  const field = "flex flex-col gap-1 text-xs text-neutral-600";
+
+  return (
+    <details className="group border-b border-neutral-200 px-4 py-3">
+      <summary className="cursor-pointer list-none text-sm font-medium text-neutral-700 select-none">
+        <span className="mr-1 inline-block transition-transform group-open:rotate-90">›</span>
+        목록에 없는 가구 직접 만들기
+      </summary>
+      <div className="mt-3 flex flex-col gap-2">
+        <label className={field}>
+          이름
+          <TextField
+            value={spec.name}
+            ariaLabel="직접 만들 가구 이름"
+            onCommit={(name) => setSpec((s) => ({ ...s, name }))}
+          />
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          {(
+            [
+              ["width", "가로", 50],
+              ["depth", "깊이", 20],
+              ["height", "높이", 5],
+            ] as const
+          ).map(([key, text, min]) => (
+            <label key={key} className={field}>
+              {text}
+              <LengthField
+                valueMm={spec[key]}
+                unit={unit}
+                min={min}
+                ariaLabel={`직접 만들 가구 ${text}`}
+                onCommit={(mm) => setSpec((s) => ({ ...s, [key]: mm }))}
+              />
+            </label>
+          ))}
+        </div>
+        <Button
+          variant="primary"
+          onClick={() => useEditorStore.getState().addFurniture("custom", viewCenter(), spec)}
+        >
+          만들어서 놓기
+        </Button>
+      </div>
+    </details>
   );
 }

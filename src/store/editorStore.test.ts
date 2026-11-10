@@ -106,3 +106,22 @@ describe("furniture and openings", () => {
     expect(store.getState().doc.floorplan.openings).toHaveLength(0);
   });
 });
+
+describe("custom furniture", () => {
+  it("creates an item with the given name and size", () => {
+    store
+      .getState()
+      .addFurniture(
+        "custom",
+        { x: 0, y: 0 },
+        { name: "캣타워", width: 500, depth: 450, height: 1500 },
+      );
+    expect(store.getState().doc.layouts[0].items[0]).toMatchObject({
+      catalogId: "custom",
+      name: "캣타워",
+      width: 500,
+      depth: 450,
+      height: 1500,
+    });
+  });
+});

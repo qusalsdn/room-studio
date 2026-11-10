@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { Circle, Ellipse, Group, Line, Rect } from "react-konva";
 import { symbolOf } from "@/catalog/furniture";
+import { lShapeLocal } from "@/geometry/furniture";
 import type { FurnitureItem } from "@/domain/document";
 import { COLORS } from "./constants";
 
@@ -88,6 +89,24 @@ export function FurnitureShape({
         ))}
       </>
     );
+  } else if (symbol === "hanger") {
+    // 가운데 봉 + 걸린 옷걸이
+    const pitch = 120;
+    const count = Math.max(1, Math.floor((w - 160) / pitch));
+    const start = -((count - 1) * pitch) / 2;
+    detail = (
+      <>
+        <Line points={[x0 + 40, 0, -x0 - 40, 0]} stroke={OUTLINE} strokeWidth={px(2)} />
+        {Array.from({ length: count }, (_, i) => (
+          <Line
+            key={i}
+            points={[start + i * pitch, y0 + d * 0.15, start + i * pitch, -y0 - d * 0.15]}
+            stroke={DETAIL}
+            strokeWidth={px(1)}
+          />
+        ))}
+      </>
+    );
   } else if (symbol === "plain") {
     // 뒤쪽 면을 굵게 표시해 방향을 알 수 있게
     detail = (
@@ -95,29 +114,32 @@ export function FurnitureShape({
     );
   }
 
-  const body =
-    symbol === "round" ? (
-      <Ellipse
-        radiusX={w / 2}
-        radiusY={d / 2}
-        fill={color}
-        stroke={stroke}
-        strokeWidth={strokeWidth}
-      />
-    ) : (
-      <Rect
-        x={x0}
-        y={y0}
-        width={w}
-        height={d}
-        fill={color}
-        opacity={symbol === "rug" ? 0.6 : 1}
-        stroke={stroke}
-        strokeWidth={strokeWidth}
-        dash={symbol === "rug" ? [px(5), px(4)] : undefined}
-        cornerRadius={symbol === "sofa" ? 60 : 0}
-      />
-    );
+  const lPoints = symbol === "l-shape" ? lShapeLocal(w, d).flatMap((p) => [p.x, p.y]) : null;
+
+  const body = lPoints ? (
+    <Line points={lPoints} closed fill={color} stroke={stroke} strokeWidth={strokeWidth} />
+  ) : symbol === "round" ? (
+    <Ellipse
+      radiusX={w / 2}
+      radiusY={d / 2}
+      fill={color}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+    />
+  ) : (
+    <Rect
+      x={x0}
+      y={y0}
+      width={w}
+      height={d}
+      fill={color}
+      opacity={symbol === "rug" ? 0.6 : symbol === "hanger" ? 0.5 : 1}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+      dash={symbol === "rug" ? [px(5), px(4)] : undefined}
+      cornerRadius={symbol === "sofa" ? 60 : 0}
+    />
+  );
 
   const handleY = y0 - px(26);
 
@@ -136,7 +158,16 @@ export function FurnitureShape({
       >
         {body}
         <Group listening={false}>{detail}</Group>
-        {selected && symbol !== "round" && (
+        {selected && lPoints && (
+          <Line
+            points={lPoints}
+            closed
+            stroke={COLORS.accent}
+            strokeWidth={px(2)}
+            listening={false}
+          />
+        )}
+        {selected && symbol !== "round" && !lPoints && (
           <Rect
             x={x0}
             y={y0}

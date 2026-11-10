@@ -27,9 +27,10 @@ import {
   removeDuplicatePoints,
   splitEdge,
 } from "@/geometry/roomEdit";
-import { FURNITURE_DRAG_TYPE } from "@/catalog/furniture";
+import { FURNITURE_DRAG_TYPE, symbolOf } from "@/catalog/furniture";
 import {
   collectSnapLines,
+  itemLabelPoint,
   normalizeAngle,
   snapAngle,
   snapItemPosition,
@@ -630,22 +631,18 @@ export default function FloorplanCanvas() {
                 items.map((item) => {
                   const selected = item.id === selectedItemId;
                   if (!selected && Math.min(item.width, item.depth) * scale < 36) return null;
+                  const at = itemLabelPoint(item, symbolOf(item.catalogId) === "l-shape");
                   return (
                     <Group key={`item-label-${item.id}`} listening={false}>
-                      {label(
-                        "n",
-                        { x: item.x, y: item.y - (selected ? 7 : 0) / scale },
-                        item.name,
-                        {
-                          size: 11,
-                          bold: selected,
-                          color: COLORS.labelStrong,
-                        },
-                      )}
+                      {label("n", { x: at.x, y: at.y - (selected ? 7 : 0) / scale }, item.name, {
+                        size: 11,
+                        bold: selected,
+                        color: COLORS.labelStrong,
+                      })}
                       {selected &&
                         label(
                           "d",
-                          { x: item.x, y: item.y + 8 / scale },
+                          { x: at.x, y: at.y + 8 / scale },
                           `${formatLength(item.width, displayUnit)} × ${formatLength(item.depth, displayUnit)}`,
                           { size: 10 },
                         )}

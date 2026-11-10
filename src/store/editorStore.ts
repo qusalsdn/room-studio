@@ -95,7 +95,11 @@ export type EditorState = {
   deleteOpening: (openingId: string) => void;
 
   // 가구 (현재 배치안)
-  addFurniture: (catalogId: string, at: Vec2) => string | null;
+  addFurniture: (
+    catalogId: string,
+    at: Vec2,
+    overrides?: Partial<Pick<FurnitureItem, "name" | "width" | "depth" | "height">>,
+  ) => string | null;
   updateFurniture: (itemId: string, patch: Partial<Omit<FurnitureItem, "id">>) => void;
   duplicateFurniture: (itemId: string) => void;
   deleteFurniture: (itemId: string) => void;
@@ -334,7 +338,7 @@ export const useEditorStore = create<EditorState>()(
         set({ selection: null });
       },
 
-      addFurniture: (catalogId, at) => {
+      addFurniture: (catalogId, at, overrides = {}) => {
         const c = findCatalogItem(catalogId);
         if (!c) return null;
         const item: FurnitureItem = {
@@ -348,6 +352,7 @@ export const useEditorStore = create<EditorState>()(
           depth: c.depth,
           height: c.height,
           color: c.color,
+          ...overrides,
         };
         get().apply((d) => {
           activeLayout(d).items.push(item);
