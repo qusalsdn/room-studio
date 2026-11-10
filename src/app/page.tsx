@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-6 py-24">
@@ -9,6 +11,14 @@ export default function Home() {
         우리 집 구조와 가구를 실측 치수로 옮겨 놓고 2D 평면도와 3D로 재배치를 미리 확인하는
         서비스입니다. 지금은 개발 중이에요.
       </p>
+      <div>
+        <Link
+          href="/editor"
+          className="inline-flex rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          바로 시작하기
+        </Link>
+      </div>
     </main>
   );
 }

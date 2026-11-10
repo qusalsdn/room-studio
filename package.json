@@ -14,9 +14,15 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "immer": "^11.2.9",
+    "konva": "^10.9.1",
+    "nanoid": "^6.0.2",
     "next": "16.4.5",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "react-konva": "^19.3.2",
+    "zod": "^4.6.7",
+    "zustand": "^5.1.0"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
