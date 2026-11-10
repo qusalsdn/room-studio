@@ -51,7 +51,11 @@ const STYLE: Record<ItemStyle, { fill: string; stroke: string; dash?: string; op
   added: { fill: "", stroke: "#16a34a", opacity: 1 },
 };
 
-function ItemShape({ item, style, unit }: { item: FurnitureItem; style: ItemStyle; unit: number }) {
+/**
+ * 가구 하나. OG 이미지 렌더러(satori)는 <svg> 안에 컴포넌트·Fragment를 허용하지 않으므로
+ * 컴포넌트가 아니라 SVG 요소를 돌려주는 함수로 둔다.
+ */
+function itemShape(item: FurnitureItem, style: ItemStyle, unit: number) {
   const s = STYLE[style];
   const symbol = symbolOf(item.catalogId);
   const fill = s.fill === "none" ? "none" : item.color;
@@ -75,7 +79,11 @@ function ItemShape({ item, style, unit }: { item: FurnitureItem; style: ItemStyl
     shape = <rect x={-w / 2} y={-d / 2} width={w} height={d} {...common} />;
   }
   return (
-    <g transform={`translate(${item.x} ${item.y}) rotate(${item.rotation})`} opacity={s.opacity}>
+    <g
+      key={`${style}-${item.id}`}
+      transform={`translate(${item.x} ${item.y}) rotate(${item.rotation})`}
+      opacity={s.opacity}
+    >
       {shape}
       {/* 뒤쪽(등받이·머리판) 표시 */}
       {style !== "ghost" && style !== "removed" && symbol !== "round" && (
@@ -166,7 +174,7 @@ export function StaticPlan({
               vectorEffect="non-scaling-stroke"
             />
             {swing && (
-              <>
+              <g>
                 <polyline
                   points={pts(swing.arc)}
                   fill="none"
@@ -184,7 +192,7 @@ export function StaticPlan({
                   strokeWidth={2}
                   vectorEffect="non-scaling-stroke"
                 />
-              </>
+              </g>
             )}
           </g>
         );
@@ -230,9 +238,7 @@ export function StaticPlan({
             );
           }),
         )}
-      {items.map(({ item, style }) => (
-        <ItemShape key={`${style}-${item.id}`} item={item} style={style} unit={unit} />
-      ))}
+      {items.map(({ item, style }) => itemShape(item, style, unit))}
       {arrows.map((a, i) => (
         <line
           key={i}

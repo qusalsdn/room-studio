@@ -105,7 +105,10 @@ function OrbitRig({ resetKey }: { resetKey: number }) {
     const cz = ((b.minY + b.maxY) / 2) * M;
     const size = Math.max(b.maxX - b.minX, b.maxY - b.minY) * M;
     const { camera } = get();
-    camera.position.set(cx + size * 0.25, size * 1.25, cz + size * 0.7);
+    // 작은 방도 벽 높이(2.4m)까지 한 화면에 들어오도록 거리에 여유를 둔다
+    const dist = Math.max(size, 3) * 1.45 + 2;
+    const dir = new THREE.Vector3(0.22, 1, 0.62).normalize();
+    camera.position.set(cx + dir.x * dist, dir.y * dist, cz + dir.z * dist);
     controls.current?.target.set(cx, 0, cz);
     controls.current?.update();
   }, [resetKey, get]);
