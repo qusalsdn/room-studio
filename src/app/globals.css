@@ -12,12 +12,7 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* 도면 색을 그대로 보여 주기 위해 지금은 밝은 화면만 쓴다 */
 
 body {
   background: var(--background);

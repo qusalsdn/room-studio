@@ -136,3 +136,12 @@ describe("door approach and duplicate warnings", () => {
     expect(w.filter((x) => x.kind === "passage")).toHaveLength(0);
   });
 });
+
+describe("demo house", () => {
+  it("is a clean example with no problems", async () => {
+    const { demoHouse } = await import("@/catalog/demo");
+    const demo = demoHouse();
+    const errors = checkLayout(demo, demo.layouts[0].items).filter((w) => w.severity === "error");
+    expect(errors.map((w) => w.message)).toEqual([]);
+  });
+});
