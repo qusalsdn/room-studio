@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { ROOM_PRESETS } from "@/catalog/roomPresets";
 import { createEmptyDocument } from "@/domain/document";
 import { rectPoints } from "@/geometry/roomEdit";
-import { useEditorStore } from "@/store/editorStore";
+import { activeLayout, useEditorStore } from "@/store/editorStore";
 
 const store = useEditorStore;
 
@@ -139,5 +139,43 @@ describe("cloud projects", () => {
     store.getState().openGuest();
     expect(store.getState().projectId).toBeNull();
     expect(store.getState().doc.name).toBe("우리 집");
+  });
+});
+
+describe("layouts", () => {
+  it("copies, switches, renames, marks current and deletes layouts", () => {
+    const s = () => store.getState();
+    const bed = s().addFurniture("bed-queen", { x: 1000, y: 1000 })!;
+    const baseId = s().doc.layouts[0].id;
+
+    const a = s().addLayout();
+    expect(s().doc.layouts.map((l) => l.name)).toEqual(["현재 배치", "배치안 A"]);
+    expect(s().doc.editingLayoutId).toBe(a);
+    // 복제본은 같은 가구 id를 가진다 → 비교할 때 같은 가구로 인식
+    expect(s().doc.layouts[1].items[0].id).toBe(bed);
+
+    // 배치안 A에서만 침대를 옮긴다
+    s().updateFurniture(bed, { x: 3000 });
+    expect(s().doc.layouts[0].items[0].x).toBe(1000);
+    expect(s().doc.layouts[1].items[0].x).toBe(3000);
+
+    // 전환은 실행 취소 기록에 남지 않는다
+    const pastLength = s().past.length;
+    s().switchLayout(baseId);
+    expect(s().past.length).toBe(pastLength);
+    expect(activeLayout(s().doc).id).toBe(baseId);
+
+    s().renameLayout(a, "침대 창가로");
+    s().setCurrentLayout(a);
+    expect(s().doc.layouts.map((l) => [l.name, l.isCurrent])).toEqual([
+      ["현재 배치", false],
+      ["침대 창가로", true],
+    ]);
+
+    s().deleteLayout(a);
+    expect(s().doc.layouts).toHaveLength(1);
+    expect(s().doc.layouts[0].isCurrent).toBe(true);
+    s().deleteLayout(baseId); // 마지막 하나는 지울 수 없음
+    expect(s().doc.layouts).toHaveLength(1);
   });
 });

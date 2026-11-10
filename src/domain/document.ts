@@ -65,6 +65,8 @@ export const houseDocumentSchema = z.object({
     openings: z.array(openingSchema),
   }),
   layouts: z.array(layoutSchema).min(1),
+  /** 편집기에서 마지막으로 보던 배치안 (없으면 "현재 배치") */
+  editingLayoutId: z.string().optional(),
 });
 
 export type Vec2 = z.infer<typeof vec2Schema>;

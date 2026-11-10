@@ -1,7 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { CompareView } from "./CompareView";
 import { Inspector } from "./Inspector";
+import { LayoutTabs } from "./LayoutTabs";
 import { Sidebar } from "./Sidebar";
 import { Toolbar } from "./Toolbar";
 import { useShortcuts } from "./useShortcuts";
@@ -29,23 +31,28 @@ export function Editor() {
   return (
     <div className="flex h-dvh flex-col bg-white text-neutral-900">
       <Toolbar />
-      <div className="flex min-h-0 flex-1">
-        <Sidebar />
-        <main className="flex min-w-0 flex-1">
-          {view !== "3d" && (
-            <div className="min-w-0 flex-1">
-              <FloorplanCanvas />
-            </div>
-          )}
-          {view === "split" && <div className="w-px bg-neutral-200" />}
-          {view !== "2d" && (
-            <div className="min-w-0 flex-1">
-              <Scene3D />
-            </div>
-          )}
-        </main>
-        <Inspector />
-      </div>
+      <LayoutTabs />
+      {view === "compare" ? (
+        <CompareView />
+      ) : (
+        <div className="flex min-h-0 flex-1">
+          <Sidebar />
+          <main className="flex min-w-0 flex-1">
+            {view !== "3d" && (
+              <div className="min-w-0 flex-1">
+                <FloorplanCanvas />
+              </div>
+            )}
+            {view === "split" && <div className="w-px bg-neutral-200" />}
+            {view !== "2d" && (
+              <div className="min-w-0 flex-1">
+                <Scene3D />
+              </div>
+            )}
+          </main>
+          <Inspector />
+        </div>
+      )}
     </div>
   );
 }

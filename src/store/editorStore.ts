@@ -15,6 +15,7 @@ import {
   type Room,
   type Vec2,
 } from "@/domain/document";
+import { nextLayoutName } from "@/domain/layoutDiff";
 import { normalizeAngle } from "@/geometry/furniture";
 import {
   MIN_OPENING_WIDTH,
@@ -55,7 +56,7 @@ export type Tool = "select" | "rect";
 /** structure: 방·벽·문 편집 / furniture: 가구 배치 (구조는 잠김) */
 export type EditorMode = "structure" | "furniture";
 
-export type ViewMode = "2d" | "3d" | "split";
+export type ViewMode = "2d" | "3d" | "split" | "compare";
 
 export type Selection =
   | { kind: "room"; roomId: string }
@@ -133,6 +134,16 @@ export type EditorState = {
   duplicateFurniture: (itemId: string) => void;
   deleteFurniture: (itemId: string) => void;
 
+  // 배치안
+  /** 다른 배치안으로 전환 (실행 취소 기록에 남지 않음) */
+  switchLayout: (layoutId: string) => void;
+  /** fromId 배치안을 복제해 새 배치안을 만들고 그쪽으로 전환 (가구 id는 그대로 이어짐) */
+  addLayout: (fromId?: string) => string;
+  renameLayout: (layoutId: string, name: string) => void;
+  deleteLayout: (layoutId: string) => void;
+  /** 실제 지금 집의 배치로 지정 */
+  setCurrentLayout: (layoutId: string) => void;
+
   // UI
   setMode: (mode: EditorMode) => void;
   setView: (view: ViewMode) => void;
@@ -147,9 +158,16 @@ export function findRoom(doc: HouseDocument, roomId: string): Room | undefined {
   return doc.floorplan.rooms.find((r) => r.id === roomId);
 }
 
-/** 지금 편집 중인 배치안 ("현재 배치" 표시가 된 것, 없으면 첫 번째) */
-export function activeLayout<T extends { layouts: Layout[] }>(doc: T): T["layouts"][number] {
+type WithLayouts = { layouts: Layout[]; editingLayoutId?: string };
+
+/** 실제 지금 집의 배치 ("현재 배치" 표시가 된 것, 없으면 첫 번째). 목록 미리보기·공유에 쓴다 */
+export function currentLayout<T extends WithLayouts>(doc: T): T["layouts"][number] {
   return doc.layouts.find((l) => l.isCurrent) ?? doc.layouts[0];
+}
+
+/** 편집기에서 지금 고치고 있는 배치안 */
+export function activeLayout<T extends WithLayouts>(doc: T): T["layouts"][number] {
+  return doc.layouts.find((l) => l.id === doc.editingLayoutId) ?? currentLayout(doc);
 }
 
 export function findItem(doc: HouseDocument, itemId: string): FurnitureItem | undefined {
@@ -354,6 +372,7 @@ export const useEditorStore = create<EditorState>()(
           const fresh = createEmptyDocument(d.name);
           d.floorplan = fresh.floorplan;
           d.layouts = fresh.layouts;
+          d.editingLayoutId = undefined;
         });
         set({ selection: null });
       },
@@ -446,6 +465,49 @@ export const useEditorStore = create<EditorState>()(
           activeLayout(d).items.push(copy);
         });
         set({ selection: { kind: "furniture", itemId: copy.id } });
+      },
+      switchLayout: (layoutId) => {
+        const { doc } = get();
+        if (!doc.layouts.some((l) => l.id === layoutId) || activeLayout(doc).id === layoutId)
+          return;
+        set({ doc: { ...doc, editingLayoutId: layoutId }, selection: null });
+      },
+      addLayout: (fromId) => {
+        const { doc } = get();
+        const source = doc.layouts.find((l) => l.id === fromId) ?? activeLayout(doc);
+        const layout: Layout = {
+          id: newId(),
+          name: nextLayoutName(doc.layouts.map((l) => l.name)),
+          isCurrent: false,
+          items: source.items.map((i) => ({ ...i })),
+        };
+        get().apply((d) => {
+          d.layouts.push(layout);
+          d.editingLayoutId = layout.id;
+        });
+        set({ selection: null });
+        return layout.id;
+      },
+      renameLayout: (layoutId, name) => {
+        get().apply((d) => {
+          const l = d.layouts.find((x) => x.id === layoutId);
+          if (l) l.name = name;
+        });
+      },
+      deleteLayout: (layoutId) => {
+        if (get().doc.layouts.length <= 1) return;
+        get().apply((d) => {
+          const removed = d.layouts.find((l) => l.id === layoutId);
+          d.layouts = d.layouts.filter((l) => l.id !== layoutId);
+          if (removed?.isCurrent) d.layouts[0].isCurrent = true;
+          if (d.editingLayoutId === layoutId) d.editingLayoutId = undefined;
+        });
+        set({ selection: null });
+      },
+      setCurrentLayout: (layoutId) => {
+        get().apply((d) => {
+          for (const l of d.layouts) l.isCurrent = l.id === layoutId;
+        });
       },
       deleteFurniture: (itemId) => {
         get().apply((d) => {

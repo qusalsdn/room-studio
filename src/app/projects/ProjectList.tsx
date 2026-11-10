@@ -9,7 +9,7 @@ import { displayName, signOut, useAuth } from "@/lib/auth";
 import { formatArea } from "@/lib/format";
 import { createProject, deleteProject, listProjects, type ProjectSummary } from "@/lib/projects";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { activeLayout, clearGuestDocument, readGuestDocument } from "@/store/editorStore";
+import { clearGuestDocument, currentLayout, readGuestDocument } from "@/store/editorStore";
 
 const relative = new Intl.RelativeTimeFormat("ko", { numeric: "auto" });
 
@@ -60,7 +60,7 @@ function Thumbnail({ doc }: { doc: HouseDocument | null }) {
           strokeWidth={t}
         />
       ))}
-      {activeLayout(doc!).items.map((i) => (
+      {currentLayout(doc!).items.map((i) => (
         <rect
           key={i.id}
           x={i.x - i.width / 2}
@@ -173,7 +173,7 @@ export function ProjectList() {
         <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-900 ring-1 ring-blue-100">
           <p className="flex-1">
             로그인 전에 이 브라우저에서 만든 &lsquo;{guestDoc.name}&rsquo;(방{" "}
-            {guestDoc.floorplan.rooms.length}개, 가구 {activeLayout(guestDoc).items.length}개)이
+            {guestDoc.floorplan.rooms.length}개, 가구 {currentLayout(guestDoc).items.length}개)이
             있어요. 계정으로 옮기면 다른 기기에서도 열 수 있어요.
           </p>
           <button
