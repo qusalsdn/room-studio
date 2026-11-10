@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { Circle, Ellipse, Group, Line, Rect } from "react-konva";
 import { symbolOf } from "@/catalog/furniture";
-import { lShapeLocal } from "@/geometry/furniture";
+import { lShapeLocal, RESIZE_HANDLES, type ResizeHandle } from "@/geometry/furniture";
 import type { FurnitureItem } from "@/domain/document";
 import { COLORS } from "./constants";
 
@@ -14,11 +14,20 @@ type Props = {
   scale: number;
   onPointerDown?: (e: KonvaEventObject<PointerEvent>) => void;
   onRotateStart?: (e: KonvaEventObject<PointerEvent>) => void;
+  onResizeStart?: (handle: ResizeHandle) => (e: KonvaEventObject<PointerEvent>) => void;
   onHover?: (cursor: string | null) => void;
 };
 
 const OUTLINE = "rgba(39, 39, 42, 0.55)";
 const DETAIL = "rgba(39, 39, 42, 0.35)";
+const RESIZE_CURSORS = ["ew-resize", "nwse-resize", "ns-resize", "nesw-resize"];
+
+/** 손잡이가 화면에서 향하는 방향에 맞는 크기 조절 커서 */
+function resizeCursor(h: ResizeHandle, rotation: number): string {
+  const deg = (Math.atan2(h.sy, h.sx) * 180) / Math.PI + rotation;
+  const bucket = Math.round((((deg % 180) + 180) % 180) / 45) % 4;
+  return RESIZE_CURSORS[bucket];
+}
 
 /** 가구 평면 기호. 원점은 가구 중심, 회전 0일 때 등받이·머리판이 위(-y) */
 export function FurnitureShape({
@@ -29,6 +38,7 @@ export function FurnitureShape({
   scale,
   onPointerDown,
   onRotateStart,
+  onResizeStart,
   onHover,
 }: Props) {
   const { width: w, depth: d, color } = item;
@@ -179,6 +189,47 @@ export function FurnitureShape({
           />
         )}
       </Group>
+      {selected && interactive && onResizeStart && (
+        <>
+          {/* 변 전체를 잡아 늘일 수 있도록 투명한 선을 깐다 */}
+          {RESIZE_HANDLES.filter((h) => h.sx === 0 || h.sy === 0).map((h) => {
+            const points =
+              h.sx === 0
+                ? [x0, (h.sy * d) / 2, -x0, (h.sy * d) / 2]
+                : [(h.sx * w) / 2, y0, (h.sx * w) / 2, -y0];
+            return (
+              <Line
+                key={`edge-${h.sx}-${h.sy}`}
+                points={points}
+                stroke="rgba(0,0,0,0)"
+                hitStrokeWidth={px(10)}
+                onPointerDown={onResizeStart(h)}
+                onMouseEnter={() => onHover?.(resizeCursor(h, item.rotation))}
+                onMouseLeave={() => onHover?.(null)}
+              />
+            );
+          })}
+          {RESIZE_HANDLES.map((h) => {
+            const size = px(h.sx !== 0 && h.sy !== 0 ? 9 : 7);
+            return (
+              <Rect
+                key={`handle-${h.sx}-${h.sy}`}
+                x={(h.sx * w) / 2 - size / 2}
+                y={(h.sy * d) / 2 - size / 2}
+                width={size}
+                height={size}
+                fill="#ffffff"
+                stroke={COLORS.accent}
+                strokeWidth={px(1.5)}
+                hitStrokeWidth={px(8)}
+                onPointerDown={onResizeStart(h)}
+                onMouseEnter={() => onHover?.(resizeCursor(h, item.rotation))}
+                onMouseLeave={() => onHover?.(null)}
+              />
+            );
+          })}
+        </>
+      )}
       {selected && interactive && (
         <>
           <Line points={[0, y0, 0, handleY]} stroke={COLORS.accent} strokeWidth={px(1.5)} />

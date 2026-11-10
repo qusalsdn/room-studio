@@ -187,3 +187,90 @@ export function clearanceZones(item: Placement, c: Clearance | undefined): Clear
   }
   return zones;
 }
+
+/** 크기 조절 손잡이 위치. 로컬 좌표에서 -1(왼쪽/위) · 0(가운데) · 1(오른쪽/아래) */
+export type ResizeHandle = { sx: -1 | 0 | 1; sy: -1 | 0 | 1 };
+
+export const RESIZE_HANDLES: ResizeHandle[] = [
+  { sx: -1, sy: -1 },
+  { sx: 0, sy: -1 },
+  { sx: 1, sy: -1 },
+  { sx: 1, sy: 0 },
+  { sx: 1, sy: 1 },
+  { sx: 0, sy: 1 },
+  { sx: -1, sy: 1 },
+  { sx: -1, sy: 0 },
+];
+
+/** 가구 가로·깊이의 최소값 (속성 패널과 같은 값) */
+export const MIN_ITEM_WIDTH = 50;
+export const MIN_ITEM_DEPTH = 20;
+
+export type ResizeResult = {
+  patch: Pick<FurnitureItem, "x" | "y" | "width" | "depth">;
+  guides: { x?: number; y?: number };
+};
+
+/**
+ * 손잡이를 pointer(도면 좌표)까지 끌었을 때의 새 위치·크기.
+ * 손잡이 반대쪽 변(모서리)은 제자리에 둔 채 늘이고, 회전된 가구도 가구 축을 따라 조절한다.
+ * snap을 주면 움직이는 변이 threshold 안의 벽·가구 기준선에 붙는다
+ * (기준선이 수평·수직뿐이라 가구가 90° 단위로 놓였을 때만).
+ */
+export function resizeItem(
+  item: Placement,
+  handle: ResizeHandle,
+  pointer: Vec2,
+  opts: { grid?: number; snap?: { lines: SnapLines; threshold: number } } = {},
+): ResizeResult {
+  const grid = opts.grid ?? 10;
+  const r = (item.rotation * Math.PI) / 180;
+  const cos = Math.cos(r);
+  const sin = Math.sin(r);
+  const dx = pointer.x - item.x;
+  const dy = pointer.y - item.y;
+  const p = { x: dx * cos + dy * sin, y: -dx * sin + dy * cos };
+  const guides: ResizeResult["guides"] = {};
+
+  /** 가구 로컬 축(도면 방향 dir)이 도면의 x·y축과 나란하면 그 축과 부호 */
+  const worldAxis = (dir: Vec2) => {
+    const EPS = 1e-6;
+    if (Math.abs(Math.abs(dir.x) - 1) < EPS) return { key: "x" as const, sign: Math.sign(dir.x) };
+    if (Math.abs(Math.abs(dir.y) - 1) < EPS) return { key: "y" as const, sign: Math.sign(dir.y) };
+    return null;
+  };
+
+  const axis = (s: number, size: number, at: number, min: number, dir: Vec2) => {
+    if (s === 0) return { size, center: 0 };
+    const anchor = (-s * size) / 2;
+    let next = Math.max(min, Math.round(((at - anchor) * s) / grid) * grid);
+
+    const wa = opts.snap && worldAxis(dir);
+    if (opts.snap && wa) {
+      const origin = item[wa.key];
+      const edgeWorld = origin + wa.sign * at;
+      let best: number | null = null;
+      for (const line of opts.snap.lines[wa.key === "x" ? "xs" : "ys"]) {
+        const dist = Math.abs(line - edgeWorld);
+        if (dist <= opts.snap.threshold && (best === null || dist < Math.abs(best - edgeWorld))) {
+          best = line;
+        }
+      }
+      if (best !== null) {
+        const snapped = Math.round(((best - origin) * wa.sign - anchor) * s);
+        if (snapped >= min) {
+          next = snapped;
+          guides[wa.key] = best;
+        }
+      }
+    }
+    return { size: next, center: anchor + (s * next) / 2 };
+  };
+  const ax = axis(handle.sx, item.width, p.x, MIN_ITEM_WIDTH, { x: cos, y: sin });
+  const ay = axis(handle.sy, item.depth, p.y, MIN_ITEM_DEPTH, { x: -sin, y: cos });
+  const c = toWorld(item, { x: ax.center, y: ay.center });
+  return {
+    patch: { x: Math.round(c.x), y: Math.round(c.y), width: ax.size, depth: ay.size },
+    guides,
+  };
+}

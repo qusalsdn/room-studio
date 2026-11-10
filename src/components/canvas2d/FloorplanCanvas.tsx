@@ -3,7 +3,7 @@
 import type { KonvaEventObject } from "konva/lib/Node";
 import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
 import { Circle, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
-import type { Room, Vec2 } from "@/domain/document";
+import type { FurnitureItem, Room, Vec2 } from "@/domain/document";
 import {
   bounds,
   centroid,
@@ -32,8 +32,10 @@ import {
   collectSnapLines,
   itemLabelPoint,
   normalizeAngle,
+  resizeItem,
   snapAngle,
   snapItemPosition,
+  type ResizeHandle,
   type SnapLines,
 } from "@/geometry/furniture";
 import { offsetForCenter } from "@/geometry/openings";
@@ -63,6 +65,7 @@ type DragState =
   | { kind: "opening"; openingId: string; roomId: string }
   | { kind: "item"; itemId: string; grab: Vec2; lines: SnapLines }
   | { kind: "rotate"; itemId: string; center: Vec2 }
+  | { kind: "resize"; itemId: string; handle: ResizeHandle; base: FurnitureItem; lines: SnapLines }
   | { kind: "vertex"; roomId: string; index: number; base: Vec2[] }
   | { kind: "edge"; roomId: string; edgeIndex: number; base: Vec2[]; start: Vec2; normal: Vec2 }
   | { kind: "rect"; start: Vec2 };
@@ -211,6 +214,22 @@ export default function FloorplanCanvas() {
             s.updateFurniture(item.id, r.position);
             setGuides(r.guides);
           }
+          break;
+        }
+        case "resize": {
+          const r = resizeItem(
+            drag.base,
+            drag.handle,
+            world,
+            evt.altKey
+              ? { grid: 1 }
+              : {
+                  grid: ITEM_GRID,
+                  snap: { lines: drag.lines, threshold: SNAP_PX / s.viewport.scale },
+                },
+          );
+          s.updateFurniture(drag.itemId, r.patch);
+          setGuides(evt.altKey ? null : r.guides);
           break;
         }
         case "rotate": {
@@ -419,6 +438,24 @@ export default function FloorplanCanvas() {
     s.beginTransaction();
     dragRef.current = { kind: "rotate", itemId, center: { x: item.x, y: item.y } };
   };
+
+  const onResizePointerDown =
+    (itemId: string) => (handle: ResizeHandle) => (e: KonvaEventObject<PointerEvent>) => {
+      if (!canEditShapes(e)) return;
+      e.cancelBubble = true;
+      const s = useEditorStore.getState();
+      const item = findItem(s.doc, itemId);
+      if (!item) return;
+      s.beginTransaction();
+      const others = activeLayout(s.doc).items.filter((i) => i.id !== itemId);
+      dragRef.current = {
+        kind: "resize",
+        itemId,
+        handle,
+        base: { ...item },
+        lines: collectSnapLines(s.doc.floorplan.rooms, others),
+      };
+    };
 
   // 카탈로그에서 끌어다 놓기
   const onDragOver = (e: DragEvent) => {
@@ -631,6 +668,7 @@ export default function FloorplanCanvas() {
                   scale={scale}
                   onPointerDown={onItemPointerDown(item.id)}
                   onRotateStart={onRotatePointerDown(item.id)}
+                  onResizeStart={onResizePointerDown(item.id)}
                   onHover={(c) => setHoverCursor(c ?? "default")}
                 />
               ))}
