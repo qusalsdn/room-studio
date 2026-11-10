@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEditorStore } from "@/store/editorStore";
 import { AccountStatus } from "./AccountStatus";
+import { ExportMenu } from "./ExportMenu";
+import { ShareButton } from "./ShareDialog";
 import { Button } from "./fields";
 
 export function Toolbar() {
@@ -96,6 +98,9 @@ export function Toolbar() {
         >
           ↷ 다시 실행
         </Button>
+        <span className="mx-1 h-5 w-px bg-neutral-200" />
+        <ExportMenu />
+        <ShareButton />
         <span className="mx-1 h-5 w-px bg-neutral-200" />
         <Button variant="ghost" onClick={() => s().requestFit()} title="화면 맞춤 (F)">
           화면 맞춤

@@ -2,7 +2,17 @@ import { symbolOf } from "@/catalog/furniture";
 import type { FurnitureItem, HouseDocument, Vec2 } from "@/domain/document";
 import { lShapeLocal } from "@/geometry/furniture";
 import { doorSwing, openingGeometry } from "@/geometry/openings";
-import { add, bounds, centroid, offsetPolygon, scale } from "@/geometry/polygon";
+import {
+  add,
+  bounds,
+  centroid,
+  distance,
+  edgeAt,
+  offsetPolygon,
+  outwardNormal,
+  scale,
+} from "@/geometry/polygon";
+import { formatLength } from "@/lib/format";
 
 /**
  * 읽기 전용 평면도 (SVG). 비교 화면, 나중에는 공유 페이지·이미지 내보내기에 쓴다.
@@ -22,8 +32,13 @@ type Props = {
   /** 마우스를 올린 가구 (목록과 연동) */
   focusId?: string | null;
   showLabels?: boolean;
+  /** 벽 안쪽 길이 표시 */
+  showDimensions?: boolean;
   className?: string;
   title?: string;
+  /** 픽셀 크기 (OG 이미지처럼 className을 못 쓰는 곳에서) */
+  width?: number;
+  height?: number;
 };
 
 const pts = (points: Vec2[]) => points.map((p) => `${p.x},${p.y}`).join(" ");
@@ -83,8 +98,11 @@ export function StaticPlan({
   arrows = [],
   focusId,
   showLabels = true,
+  showDimensions = false,
   className,
   title,
+  width,
+  height,
 }: Props) {
   const { rooms, openings } = doc.floorplan;
   const t = doc.settings.wallThickness;
@@ -104,8 +122,12 @@ export function StaticPlan({
     <svg
       viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
       className={className}
+      width={width}
+      height={height}
       role="img"
       aria-label={title ?? "평면도"}
+      xmlns="http://www.w3.org/2000/svg"
+      fontFamily="system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"
     >
       <defs>
         <marker
@@ -185,6 +207,29 @@ export function StaticPlan({
             </text>
           );
         })}
+      {showDimensions &&
+        rooms.map((r) =>
+          r.points.map((_, i) => {
+            const [a, b2] = edgeAt(r.points, i);
+            const n = outwardNormal(r.points, i);
+            const off = -unit * (1.6 + 1.8 * Math.abs(n.x));
+            const len = distance(a, b2);
+            if (len < unit * 6) return null;
+            return (
+              <text
+                key={`d-${r.id}-${i}`}
+                x={(a.x + b2.x) / 2 + n.x * off}
+                y={(a.y + b2.y) / 2 + n.y * off}
+                fontSize={unit * 1.5}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="#71717a"
+              >
+                {formatLength(len, doc.settings.displayUnit)}
+              </text>
+            );
+          }),
+        )}
       {items.map(({ item, style }) => (
         <ItemShape key={`${style}-${item.id}`} item={item} style={style} unit={unit} />
       ))}
