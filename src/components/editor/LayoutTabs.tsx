@@ -37,6 +37,7 @@ export function LayoutTabs() {
             setRenaming(null);
           }}
           onToggleMenu={() => setMenuFor((m) => (m === l.id ? null : l.id))}
+          onOpenMenu={() => setMenuFor(l.id)}
           onCloseMenu={() => setMenuFor(null)}
         />
       ))}
@@ -79,6 +80,7 @@ function Tab({
   onStartRename,
   onRename,
   onToggleMenu,
+  onOpenMenu,
   onCloseMenu,
 }: {
   layout: Layout;
@@ -90,10 +92,18 @@ function Tab({
   onStartRename: () => void;
   onRename: (name: string) => void;
   onToggleMenu: () => void;
+  onOpenMenu: () => void;
   onCloseMenu: () => void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const s = useEditorStore.getState;
+
+  const confirmDelete = () => {
+    onCloseMenu();
+    if (window.confirm(`'${layout.name}'을(를) 지울까요? 실행 취소(⌘Z)로 되돌릴 수 있어요.`)) {
+      s().deleteLayout(layout.id);
+    }
+  };
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -107,7 +117,12 @@ function Tab({
   return (
     <div
       ref={menuRef}
-      className={`relative flex shrink-0 items-center rounded-md ${
+      // 마우스 오른쪽 클릭으로도 메뉴를 연다
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onOpenMenu();
+      }}
+      className={`group relative flex shrink-0 items-center rounded-md ${
         active ? "bg-white shadow-sm ring-1 ring-neutral-200" : "hover:bg-white/70"
       }`}
     >
@@ -145,10 +160,22 @@ function Tab({
         aria-label={`${layout.name} 메뉴`}
         aria-expanded={menuOpen}
         onClick={onToggleMenu}
-        className="rounded px-1.5 py-1 text-neutral-400 hover:text-neutral-800"
+        title="메뉴 (오른쪽 클릭으로도 열려요)"
+        className="rounded px-1.5 py-1 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
       >
         ⋯
       </button>
+      {canDelete && !renaming && (
+        <button
+          type="button"
+          aria-label={`${layout.name} 삭제`}
+          title="배치안 삭제"
+          onClick={confirmDelete}
+          className="mr-0.5 rounded px-1 py-0.5 text-neutral-400 opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-600 focus-visible:opacity-100"
+        >
+          ×
+        </button>
+      )}
       {menuOpen && (
         <div
           role="menu"
@@ -173,19 +200,8 @@ function Tab({
           >
             현재 배치로 지정
           </MenuItem>
-          <MenuItem
-            danger
-            disabled={!canDelete}
-            onClick={() => {
-              onCloseMenu();
-              if (
-                window.confirm(`'${layout.name}'을(를) 지울까요? 실행 취소로 되돌릴 수 있어요.`)
-              ) {
-                s().deleteLayout(layout.id);
-              }
-            }}
-          >
-            삭제
+          <MenuItem danger disabled={!canDelete} onClick={confirmDelete}>
+            {canDelete ? "삭제" : "삭제 (하나뿐이라 불가)"}
           </MenuItem>
         </div>
       )}
