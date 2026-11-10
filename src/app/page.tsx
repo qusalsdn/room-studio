@@ -139,7 +139,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-neutral-100 py-6 text-center text-xs text-neutral-400">
+      <footer className="border-t border-neutral-100 py-6 text-center text-xs text-neutral-500">
         Room Studio
       </footer>
     </div>

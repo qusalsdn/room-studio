@@ -153,7 +153,7 @@ function ShareDialog({ projectId, onClose }: { projectId: string; onClose: () =>
         </div>
 
         <div className="mt-5 flex justify-end">
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" autoFocus onClick={onClose}>
             닫기
           </Button>
         </div>

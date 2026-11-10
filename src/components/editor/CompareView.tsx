@@ -197,7 +197,7 @@ export function CompareView() {
               ).map(([tag, name, w]) => (
                 <div key={tag} className="contents">
                   <dt className="truncate text-neutral-700">
-                    <span className="mr-1 text-xs font-bold text-neutral-400">{tag}</span>
+                    <span className="mr-1 text-xs font-bold text-neutral-500">{tag}</span>
                     {name}
                   </dt>
                   <dd className="text-right text-xs">

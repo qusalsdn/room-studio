@@ -99,7 +99,7 @@ export function LoginForm() {
 
       {EMAIL_LINK_ENABLED && (
         <>
-          <div className="my-6 flex items-center gap-3 text-xs text-neutral-400">
+          <div className="my-6 flex items-center gap-3 text-xs text-neutral-500">
             <span className="h-px flex-1 bg-neutral-200" />
             또는
             <span className="h-px flex-1 bg-neutral-200" />

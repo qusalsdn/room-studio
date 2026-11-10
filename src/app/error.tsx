@@ -16,7 +16,7 @@ export default function ErrorPage({
       <p className="max-w-md text-sm text-neutral-600">
         잠시 후 다시 시도해 주세요. 편집하던 내용은 마지막으로 저장된 상태로 남아 있어요.
       </p>
-      {error.digest && <p className="text-xs text-neutral-400">오류 코드: {error.digest}</p>}
+      {error.digest && <p className="text-xs text-neutral-500">오류 코드: {error.digest}</p>}
       <div className="mt-2 flex gap-2">
         <button
           type="button"

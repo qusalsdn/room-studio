@@ -37,7 +37,7 @@ function Thumbnail({ doc }: { doc: HouseDocument | null }) {
   const rooms = doc?.floorplan.rooms ?? [];
   if (rooms.length === 0) {
     return (
-      <div className="flex h-36 items-center justify-center bg-stone-50 text-xs text-neutral-400">
+      <div className="flex h-36 items-center justify-center bg-stone-50 text-xs text-neutral-500">
         아직 방이 없어요
       </div>
     );
@@ -238,7 +238,7 @@ export function ProjectList() {
                 <button
                   type="button"
                   onClick={() => remove(p)}
-                  className="rounded-md px-2 py-1 text-xs text-neutral-400 hover:bg-red-50 hover:text-red-600"
+                  className="rounded-md px-2 py-1 text-xs text-neutral-500 hover:bg-red-50 hover:text-red-600"
                 >
                   삭제
                 </button>

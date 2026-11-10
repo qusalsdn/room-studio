@@ -47,7 +47,7 @@ export function SharedViewer({ project, token }: { project: SharedProject; token
         <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-500">
           읽기 전용
         </span>
-        <span className="text-xs text-neutral-400">
+        <span className="text-xs text-neutral-500">
           {new Date(project.updatedAt).toLocaleString("ko-KR", {
             dateStyle: "medium",
             timeStyle: "short",

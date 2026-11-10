@@ -186,7 +186,7 @@ function Tab({
           aria-label={`${layout.name} 삭제`}
           title="배치안 삭제"
           onClick={confirmDelete}
-          className="mr-0.5 rounded px-1 py-0.5 text-neutral-400 opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-600 focus-visible:opacity-100"
+          className="mr-0.5 rounded px-1 py-0.5 text-neutral-500 opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-600 focus-visible:opacity-100"
         >
           ×
         </button>

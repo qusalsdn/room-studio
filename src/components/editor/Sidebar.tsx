@@ -72,7 +72,7 @@ function StructurePanel() {
             onClick={() => setTool("select")}
             title="선택 (V)"
           >
-            선택 <kbd className="text-xs text-neutral-400">V</kbd>
+            선택 <kbd className="text-xs text-neutral-500">V</kbd>
           </Button>
           <Button
             variant="ghost"
@@ -80,7 +80,7 @@ function StructurePanel() {
             onClick={() => setTool("rect")}
             title="끌어서 사각형 방 그리기 (R)"
           >
-            방 그리기 <kbd className="text-xs text-neutral-400">R</kbd>
+            방 그리기 <kbd className="text-xs text-neutral-500">R</kbd>
           </Button>
         </div>
       </Section>

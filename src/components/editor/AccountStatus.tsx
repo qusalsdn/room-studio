@@ -6,8 +6,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { useEditorStore, type SaveStatus } from "@/store/editorStore";
 
 const SAVE_LABELS: Record<SaveStatus, { text: string; className: string }> = {
-  saved: { text: "저장됨", className: "text-neutral-400" },
-  dirty: { text: "저장 대기", className: "text-neutral-400" },
+  saved: { text: "저장됨", className: "text-neutral-500" },
+  dirty: { text: "저장 대기", className: "text-neutral-500" },
   saving: { text: "저장 중…", className: "text-neutral-500" },
   error: { text: "저장 실패 · 다시 시도 중", className: "text-red-600" },
 };
@@ -27,7 +27,7 @@ export function AccountStatus() {
           {save.text}
         </span>
       ) : (
-        <span className="text-neutral-400">이 브라우저에 저장됨</span>
+        <span className="text-neutral-500">이 브라우저에 저장됨</span>
       )}
       {isSupabaseConfigured &&
         (user ? (

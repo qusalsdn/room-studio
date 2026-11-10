@@ -102,6 +102,7 @@ export function Button({
   disabled,
   title,
   active,
+  autoFocus,
 }: {
   children: ReactNode;
   onClick: () => void;
@@ -109,6 +110,7 @@ export function Button({
   disabled?: boolean;
   title?: string;
   active?: boolean;
+  autoFocus?: boolean;
 }) {
   const base =
     "inline-flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40";
@@ -125,6 +127,7 @@ export function Button({
       disabled={disabled}
       onClick={onClick}
       aria-pressed={active}
+      autoFocus={autoFocus}
       className={`${base} ${styles} ${active ? "bg-blue-50 text-blue-700 ring-1 ring-blue-300" : ""}`}
     >
       {children}

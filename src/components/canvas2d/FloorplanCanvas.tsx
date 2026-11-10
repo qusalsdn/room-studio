@@ -515,6 +515,8 @@ export default function FloorplanCanvas() {
     <div
       ref={containerRef}
       data-floorplan-canvas
+      role="application"
+      aria-label="평면도 편집 화면. 방·가구는 오른쪽 목록에서도 고를 수 있고, 방향키로 옮길 수 있어요."
       className="relative h-full w-full overflow-hidden select-none"
       style={{ cursor, background: COLORS.background }}
       onDragOver={onDragOver}

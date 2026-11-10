@@ -143,7 +143,7 @@ function Guide({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       footer={
         <>
-          <span className="mr-auto text-xs text-neutral-400">
+          <span className="mr-auto text-xs text-neutral-500">
             {step + 1} / {STEPS.length}
           </span>
           {step > 0 && (
@@ -151,7 +151,11 @@ function Guide({ onClose }: { onClose: () => void }) {
               이전
             </Button>
           )}
-          <Button variant="primary" onClick={() => (last ? onClose() : setStep(step + 1))}>
+          <Button
+            variant="primary"
+            autoFocus
+            onClick={() => (last ? onClose() : setStep(step + 1))}
+          >
             {last ? "시작하기" : "다음"}
           </Button>
         </>
@@ -168,7 +172,7 @@ function Shortcuts({ onClose }: { onClose: () => void }) {
       title="단축키"
       onClose={onClose}
       footer={
-        <Button variant="primary" onClick={onClose}>
+        <Button variant="primary" autoFocus onClick={onClose}>
           닫기
         </Button>
       }
