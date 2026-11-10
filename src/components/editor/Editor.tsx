@@ -5,6 +5,8 @@ import { CompareView } from "./CompareView";
 import { HelpDialogs } from "./HelpDialogs";
 import { Inspector } from "./Inspector";
 import { LayoutTabs } from "./LayoutTabs";
+import { MobileView } from "./MobileView";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 import { Sidebar } from "./Sidebar";
 import { Toolbar } from "./Toolbar";
 import { useShortcuts } from "./useShortcuts";
@@ -27,6 +29,11 @@ const Scene3D = dynamic(() => import("@/components/canvas3d/Scene3D"), {
 });
 
 export function Editor() {
+  const mobile = useMediaQuery("(max-width: 767px)");
+  return mobile ? <MobileView /> : <DesktopEditor />;
+}
+
+function DesktopEditor() {
   useShortcuts();
   const view = useEditorStore((s) => s.view);
   return (

@@ -78,6 +78,10 @@ export default function Home() {
                 로그인하고 저장하기
               </Link>
             </div>
+            <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 sm:hidden">
+              방을 그리고 가구를 옮기는 편집은 컴퓨터에서 할 수 있어요. 휴대폰에서는 저장한 집을
+              보기만 할 수 있어요.
+            </p>
             <p className="mt-4 text-sm text-neutral-500">
               로그인 없이 쓴 작업은 이 브라우저에 저장되고, 나중에 로그인하면 계정으로 옮길 수
               있어요.
