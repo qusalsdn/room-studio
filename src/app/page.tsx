@@ -18,6 +18,12 @@ export default function Home() {
         >
           바로 시작하기
         </Link>
+        <Link
+          href="/projects"
+          className="ml-2 inline-flex rounded-lg px-5 py-3 text-sm font-semibold text-neutral-700 ring-1 ring-neutral-300 hover:bg-neutral-50"
+        >
+          로그인 · 내 프로젝트
+        </Link>
       </div>
     </main>
   );

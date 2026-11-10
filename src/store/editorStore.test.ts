@@ -13,6 +13,7 @@ beforeEach(() => {
     future: [],
     txBase: null,
     selection: null,
+    projectId: null,
   });
 });
 
@@ -123,5 +124,20 @@ describe("custom furniture", () => {
       depth: 450,
       height: 1500,
     });
+  });
+});
+
+describe("cloud projects", () => {
+  it("loads a project with fresh history and returns to the guest document", () => {
+    store.getState().addRoom("게스트 방", rectPoints(0, 0, 3000, 3000));
+    const cloud = createEmptyDocument("클라우드 집");
+    store.getState().loadProject("p1", cloud);
+    expect(store.getState()).toMatchObject({ projectId: "p1", past: [], saveStatus: "saved" });
+    expect(store.getState().doc.name).toBe("클라우드 집");
+
+    // 테스트 환경에는 localStorage가 없으므로 빈 게스트 문서로 돌아온다
+    store.getState().openGuest();
+    expect(store.getState().projectId).toBeNull();
+    expect(store.getState().doc.name).toBe("우리 집");
   });
 });

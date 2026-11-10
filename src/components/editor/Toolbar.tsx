@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEditorStore } from "@/store/editorStore";
+import { AccountStatus } from "./AccountStatus";
 import { Button } from "./fields";
 
 export function Toolbar() {
@@ -104,7 +105,7 @@ export function Toolbar() {
           {Math.round(scale * 1000)}%
         </span>
       </div>
-      <span className="text-xs text-neutral-400">브라우저에 자동 저장됨</span>
+      <AccountStatus />
     </header>
   );
 }

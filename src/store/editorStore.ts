@@ -33,6 +33,23 @@ const memoryStorage = {
   removeItem: () => {},
 };
 
+export const GUEST_STORAGE_KEY = "room-studio:guest-document";
+
+/**
+ * 게스트 문서만 localStorage에 저장한다.
+ * 클라우드 프로젝트(projectId 있음)를 여는 동안에는 쓰지 않아 게스트 저장본을 덮지 않는다.
+ */
+const guestStorage = {
+  getItem: (name: string) => window.localStorage.getItem(name),
+  setItem: (name: string, value: string) => {
+    if (useEditorStore.getState().projectId) return;
+    window.localStorage.setItem(name, value);
+  },
+  removeItem: (name: string) => window.localStorage.removeItem(name),
+};
+
+export type SaveStatus = "saved" | "dirty" | "saving" | "error";
+
 export type Tool = "select" | "rect";
 
 /** structure: 방·벽·문 편집 / furniture: 가구 배치 (구조는 잠김) */
@@ -56,6 +73,9 @@ export type ItemPosition = { id: string; x: number; y: number };
 export type Viewport = { scale: number; x: number; y: number };
 
 export type EditorState = {
+  /** 클라우드 프로젝트 id. null이면 브라우저에 저장되는 게스트 문서 */
+  projectId: string | null;
+  saveStatus: SaveStatus;
   doc: HouseDocument;
   past: HouseDocument[];
   future: HouseDocument[];
@@ -70,6 +90,12 @@ export type EditorState = {
   viewport: Viewport;
   /** 캔버스가 화면 맞춤을 다시 해야 할 때 증가 */
   fitRequest: number;
+
+  /** 클라우드 프로젝트 문서를 연다 (실행 취소 기록 초기화) */
+  loadProject: (projectId: string, doc: HouseDocument) => void;
+  /** 게스트 문서로 돌아온다 (localStorage에서 다시 읽음) */
+  openGuest: () => void;
+  setSaveStatus: (status: SaveStatus) => void;
 
   // 히스토리
   apply: (recipe: (draft: Draft<HouseDocument>) => void) => void;
@@ -141,6 +167,8 @@ function freeOrigin(doc: HouseDocument): Vec2 {
 export const useEditorStore = create<EditorState>()(
   persist(
     (set, get) => ({
+      projectId: null,
+      saveStatus: "saved",
       doc: createEmptyDocument(),
       past: [],
       future: [],
@@ -152,6 +180,37 @@ export const useEditorStore = create<EditorState>()(
       hoveredEdge: null,
       viewport: { scale: 0.1, x: 80, y: 80 },
       fitRequest: 0,
+
+      loadProject: (projectId, doc) => {
+        set({
+          projectId,
+          doc,
+          past: [],
+          future: [],
+          txBase: null,
+          selection: null,
+          hoveredEdge: null,
+          mode: "structure",
+          tool: "select",
+          saveStatus: "saved",
+        });
+        get().requestFit();
+      },
+      openGuest: () => {
+        if (get().projectId === null) return;
+        // 문서와 projectId를 한 번에 바꿔야 클라우드 문서가 게스트 저장본에 써지지 않는다
+        set({
+          doc: readStoredGuestDocument() ?? createEmptyDocument(),
+          projectId: null,
+          past: [],
+          future: [],
+          txBase: null,
+          selection: null,
+          saveStatus: "saved",
+        });
+        get().requestFit();
+      },
+      setSaveStatus: (saveStatus) => set({ saveStatus }),
 
       apply: (recipe) => {
         const { doc, txBase, past } = get();
@@ -405,11 +464,11 @@ export const useEditorStore = create<EditorState>()(
       requestFit: () => set({ fitRequest: get().fitRequest + 1 }),
     }),
     {
-      name: "room-studio:guest-document",
+      name: GUEST_STORAGE_KEY,
       version: 1,
       // 서버·테스트 환경(window 없음)에서는 저장하지 않는다
       storage: createJSONStorage(() =>
-        typeof window === "undefined" ? memoryStorage : window.localStorage,
+        typeof window === "undefined" ? memoryStorage : guestStorage,
       ),
       partialize: (s) => ({ doc: s.doc }),
       merge: (persisted, current) => {
@@ -419,3 +478,30 @@ export const useEditorStore = create<EditorState>()(
     },
   ),
 );
+
+function readStoredGuestDocument(): HouseDocument | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(GUEST_STORAGE_KEY) ?? "null");
+    return parseDocument(raw?.state?.doc);
+  } catch {
+    return null;
+  }
+}
+
+/** 이 브라우저에 저장된 게스트 문서 (방이나 가구가 하나라도 있을 때만) */
+export function readGuestDocument(): HouseDocument | null {
+  const doc = readStoredGuestDocument();
+  if (!doc) return null;
+  const hasContent = doc.floorplan.rooms.length > 0 || doc.layouts.some((l) => l.items.length > 0);
+  return hasContent ? doc : null;
+}
+
+/** 게스트 문서를 비운다 (계정으로 옮긴 뒤) */
+export function clearGuestDocument() {
+  const s = useEditorStore.getState();
+  if (s.projectId === null) {
+    useEditorStore.setState({ doc: createEmptyDocument(), past: [], future: [], selection: null });
+  }
+  window.localStorage.removeItem(GUEST_STORAGE_KEY);
+}
