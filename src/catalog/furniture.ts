@@ -18,6 +18,16 @@ export type CatalogItem = {
   symbol: FurnitureSymbol;
   /** 카탈로그 목록에는 보이지 않음 (직접 만든 가구) */
   hidden?: boolean;
+  /** 쓰려면 비워 둬야 하는 공간 (mm). 앞은 회전 0일 때 +y 쪽 */
+  clearance?: Clearance;
+};
+
+export type Clearance = {
+  front?: number;
+  back?: number;
+  side?: number;
+  /** either: 양옆 중 한쪽만 비어 있으면 됨 (침대) / both: 양쪽 모두 */
+  sideMode?: "either" | "both";
 };
 
 export const CATEGORY_LABELS: Record<FurnitureCategory, string> = {
@@ -58,6 +68,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 450,
     color: fabric,
     symbol: "bed",
+    clearance: { side: 500, sideMode: "either" },
   },
   {
     id: "bed-super-single",
@@ -68,6 +79,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 450,
     color: fabric,
     symbol: "bed",
+    clearance: { side: 500, sideMode: "either" },
   },
   {
     id: "bed-queen",
@@ -78,6 +90,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 450,
     color: fabric,
     symbol: "bed",
+    clearance: { side: 500, sideMode: "either" },
   },
   {
     id: "bed-king",
@@ -88,6 +101,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 450,
     color: fabric,
     symbol: "bed",
+    clearance: { side: 500, sideMode: "either" },
   },
 
   {
@@ -99,6 +113,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 800,
     color: green,
     symbol: "sofa",
+    clearance: { front: 600 },
   },
   {
     id: "sofa-2",
@@ -109,6 +124,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 800,
     color: green,
     symbol: "sofa",
+    clearance: { front: 600 },
   },
   {
     id: "sofa-3",
@@ -119,6 +135,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 800,
     color: green,
     symbol: "sofa",
+    clearance: { front: 600 },
   },
 
   {
@@ -130,6 +147,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 740,
     color: wood,
     symbol: "plain",
+    clearance: { front: 600, back: 600 },
   },
   {
     id: "dining-6",
@@ -140,6 +158,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 740,
     color: wood,
     symbol: "plain",
+    clearance: { front: 600, back: 600 },
   },
   {
     id: "table-round",
@@ -150,6 +169,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 740,
     color: wood,
     symbol: "round",
+    clearance: { front: 600, back: 600, side: 600, sideMode: "both" },
   },
   {
     id: "coffee-table",
@@ -170,6 +190,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 730,
     color: wood,
     symbol: "plain",
+    clearance: { front: 700 },
   },
 
   {
@@ -202,6 +223,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 2100,
     color: wood,
     symbol: "plain",
+    clearance: { front: 600 },
   },
   {
     id: "hanger",
@@ -222,6 +244,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 900,
     color: wood,
     symbol: "plain",
+    clearance: { front: 500 },
   },
   {
     id: "bookshelf",
@@ -232,6 +255,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 1800,
     color: wood,
     symbol: "plain",
+    clearance: { front: 400 },
   },
   {
     id: "tv-stand",
@@ -253,6 +277,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 1800,
     color: white,
     symbol: "plain",
+    clearance: { front: 700 },
   },
   {
     id: "washer",
@@ -263,6 +288,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 1000,
     color: white,
     symbol: "plain",
+    clearance: { front: 600 },
   },
   {
     id: "tv",
@@ -324,6 +350,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 1200,
     color: gray,
     symbol: "sofa",
+    clearance: { back: 400 },
   },
   {
     id: "nightstand",
@@ -344,6 +371,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 750,
     color: wood,
     symbol: "plain",
+    clearance: { front: 600 },
   },
   {
     id: "side-table",
@@ -364,6 +392,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 730,
     color: wood,
     symbol: "plain",
+    clearance: { front: 700 },
   },
   {
     id: "l-desk",
@@ -394,6 +423,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 1100,
     color: wood,
     symbol: "plain",
+    clearance: { front: 500 },
   },
   {
     id: "storage-box",
@@ -414,6 +444,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 1850,
     color: white,
     symbol: "plain",
+    clearance: { front: 700 },
   },
   {
     id: "fridge-1door",
@@ -424,6 +455,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 1700,
     color: white,
     symbol: "plain",
+    clearance: { front: 700 },
   },
   {
     id: "dryer",
@@ -434,6 +466,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 1000,
     color: white,
     symbol: "plain",
+    clearance: { front: 600 },
   },
   {
     id: "styler",
@@ -444,6 +477,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 1850,
     color: white,
     symbol: "plain",
+    clearance: { front: 600 },
   },
   {
     id: "air-purifier",
@@ -494,6 +528,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 1250,
     color: "#3f3f46",
     symbol: "plain",
+    clearance: { front: 700 },
   },
   {
     id: "digital-piano",
@@ -504,6 +539,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 850,
     color: "#3f3f46",
     symbol: "plain",
+    clearance: { front: 700 },
   },
   {
     id: "mirror",

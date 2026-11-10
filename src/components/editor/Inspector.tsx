@@ -13,6 +13,8 @@ import {
   OpeningInspector,
   WallOpeningsSection,
 } from "./ObjectInspectors";
+import { WarningsSection } from "./WarningsSection";
+import { DEFAULT_MIN_PASSAGE } from "@/domain/warnings";
 
 export function Inspector() {
   const doc = useEditorStore((s) => s.doc);
@@ -81,6 +83,16 @@ function HouseInspector() {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-neutral-600">
+          통로 최소 폭 (이보다 좁으면 알려 줘요)
+          <LengthField
+            valueMm={settings.minPassage ?? DEFAULT_MIN_PASSAGE}
+            unit={settings.displayUnit}
+            min={300}
+            ariaLabel="통로 최소 폭"
+            onCommit={(mm) => s().setSettings({ minPassage: Math.min(mm, 2000) })}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-neutral-600">
           표시 단위
           <select
             value={settings.displayUnit}
@@ -96,6 +108,7 @@ function HouseInspector() {
         </label>
       </Section>
 
+      {mode === "furniture" && <WarningsSection />}
       {mode === "furniture" && <FurnitureListSection />}
 
       <Section title="방 목록">

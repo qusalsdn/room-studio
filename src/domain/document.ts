@@ -59,6 +59,8 @@ export const houseDocumentSchema = z.object({
     wallThickness: z.number(),
     wallHeight: z.number(),
     displayUnit: z.enum(["cm", "mm", "m"]),
+    /** 통로 최소 폭 (없으면 60cm) */
+    minPassage: z.number().optional(),
   }),
   floorplan: z.object({
     rooms: z.array(roomSchema),

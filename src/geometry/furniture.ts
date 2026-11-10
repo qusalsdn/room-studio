@@ -1,3 +1,4 @@
+import type { Clearance, FurnitureSymbol } from "@/catalog/furniture";
 import type { FurnitureItem, Room, Vec2 } from "@/domain/document";
 import { bounds, edgeAt, edgeAxis, type Bounds } from "@/geometry/polygon";
 
@@ -124,4 +125,65 @@ export function snapItemPosition(
     guides.y = sy.line;
   }
   return { position, guides };
+}
+
+/** 가구 로컬 좌표(중심 원점, 회전 0) → 도면 좌표 */
+export function toWorld(item: Pick<FurnitureItem, "x" | "y" | "rotation">, p: Vec2): Vec2 {
+  const r = (item.rotation * Math.PI) / 180;
+  const cos = Math.cos(r);
+  const sin = Math.sin(r);
+  return { x: item.x + p.x * cos - p.y * sin, y: item.y + p.x * sin + p.y * cos };
+}
+
+function localRect(x0: number, y0: number, x1: number, y1: number): Vec2[] {
+  return [
+    { x: x0, y: y0 },
+    { x: x1, y: y0 },
+    { x: x1, y: y1 },
+    { x: x0, y: y1 },
+  ];
+}
+
+/** 가구가 실제로 차지하는 바닥 모양을 볼록 조각들로 (ㄱ자는 두 조각, 원형은 16각형) */
+export function itemParts(item: Placement, symbol: FurnitureSymbol): Vec2[][] {
+  const w = item.width / 2;
+  const d = item.depth / 2;
+  let local: Vec2[][];
+  if (symbol === "l-shape") {
+    const a = Math.min(600, item.width * 0.45, item.depth * 0.45);
+    local = [localRect(-w, -d, w, -d + a), localRect(-w, -d + a, -w + a, d)];
+  } else if (symbol === "round") {
+    local = [
+      Array.from({ length: 16 }, (_, i) => {
+        const t = (i / 16) * Math.PI * 2;
+        return { x: Math.cos(t) * w, y: Math.sin(t) * d };
+      }),
+    ];
+  } else {
+    local = [localRect(-w, -d, w, d)];
+  }
+  return local.map((part) => part.map((p) => toWorld(item, p)));
+}
+
+export type ClearanceZone = {
+  side: "front" | "back" | "left" | "right";
+  size: number;
+  polygon: Vec2[];
+};
+
+/** 가구 둘레에 비워 둬야 하는 영역들 */
+export function clearanceZones(item: Placement, c: Clearance | undefined): ClearanceZone[] {
+  if (!c) return [];
+  const w = item.width / 2;
+  const d = item.depth / 2;
+  const zones: ClearanceZone[] = [];
+  const add = (side: ClearanceZone["side"], size: number, rect: Vec2[]) =>
+    zones.push({ side, size, polygon: rect.map((p) => toWorld(item, p)) });
+  if (c.front) add("front", c.front, localRect(-w, d, w, d + c.front));
+  if (c.back) add("back", c.back, localRect(-w, -d - c.back, w, -d));
+  if (c.side) {
+    add("left", c.side, localRect(-w - c.side, -d, -w, d));
+    add("right", c.side, localRect(w, -d, w + c.side, d));
+  }
+  return zones;
 }

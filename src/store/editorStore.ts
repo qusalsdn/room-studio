@@ -85,6 +85,10 @@ export type EditorState = {
 
   mode: EditorMode;
   view: ViewMode;
+  /** 충돌·동선 경고를 도면에 표시 */
+  showWarnings: boolean;
+  /** 경고 목록에서 마우스를 올린 경고 (도면에서 강조) */
+  focusedWarningId: string | null;
   tool: Tool;
   selection: Selection | null;
   hoveredEdge: { roomId: string; edgeIndex: number } | null;
@@ -147,6 +151,8 @@ export type EditorState = {
   // UI
   setMode: (mode: EditorMode) => void;
   setView: (view: ViewMode) => void;
+  setShowWarnings: (show: boolean) => void;
+  setFocusedWarning: (id: string | null) => void;
   setTool: (tool: Tool) => void;
   select: (selection: Selection | null) => void;
   setHoveredEdge: (edge: EditorState["hoveredEdge"]) => void;
@@ -193,6 +199,8 @@ export const useEditorStore = create<EditorState>()(
       txBase: null,
       mode: "structure",
       view: "2d",
+      showWarnings: true,
+      focusedWarningId: null,
       tool: "select",
       selection: null,
       hoveredEdge: null,
@@ -519,6 +527,8 @@ export const useEditorStore = create<EditorState>()(
 
       setMode: (mode) => set({ mode, tool: "select", selection: null, hoveredEdge: null }),
       setView: (view) => set({ view }),
+      setShowWarnings: (showWarnings) => set({ showWarnings }),
+      setFocusedWarning: (focusedWarningId) => set({ focusedWarningId }),
       setTool: (tool) => set({ tool }),
       select: (selection) => set({ selection }),
       setHoveredEdge: (hoveredEdge) => set({ hoveredEdge }),

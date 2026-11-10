@@ -51,6 +51,8 @@ import { COLORS, MAX_SCALE, MIN_RECT_SIZE, MIN_SCALE, SNAP_STEP } from "./consta
 import { FurnitureShape } from "./FurnitureShape";
 import { Grid } from "./Grid";
 import { OpeningShape } from "./OpeningShape";
+import { WarningOverlay } from "./WarningOverlay";
+import { useWarnings } from "@/components/editor/useWarnings";
 
 const ITEM_GRID = 10; // 가구는 1cm 단위
 const SNAP_PX = 10; // 벽·가구에 붙는 거리 (화면 px)
@@ -94,6 +96,9 @@ export default function FloorplanCanvas() {
   const viewport = useEditorStore((s) => s.viewport);
   const tool = useEditorStore((s) => s.tool);
   const mode = useEditorStore((s) => s.mode);
+  const showWarnings = useEditorStore((s) => s.showWarnings);
+  const focusedWarningId = useEditorStore((s) => s.focusedWarningId);
+  const warnings = useWarnings();
   const selection = useEditorStore((s) => s.selection);
   const hoveredEdge = useEditorStore((s) => s.hoveredEdge);
   const fitRequest = useEditorStore((s) => s.fitRequest);
@@ -649,6 +654,15 @@ export default function FloorplanCanvas() {
                     </Group>
                   );
                 })}
+              {/* 충돌·동선 경고 */}
+              {showWarnings && (
+                <WarningOverlay
+                  warnings={warnings}
+                  items={items}
+                  focusedId={focusedWarningId}
+                  scale={scale}
+                />
+              )}
               {/* 스냅 안내선 */}
               {guides?.x !== undefined && (
                 <Line

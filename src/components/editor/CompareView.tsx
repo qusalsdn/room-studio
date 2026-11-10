@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import type { Layout } from "@/domain/document";
 import { diffLayouts, type LayoutDiff } from "@/domain/layoutDiff";
+import { checkLayout, countBySeverity } from "@/domain/warnings";
 import { formatLength } from "@/lib/format";
 import { activeLayout, currentLayout, useEditorStore } from "@/store/editorStore";
 import { StaticPlan, type PlanArrow, type PlanItem } from "@/components/plan/StaticPlan";
@@ -66,6 +67,8 @@ export function CompareView() {
   const a = doc.layouts.find((l) => l.id === aId) ?? doc.layouts[0];
   const b = doc.layouts.find((l) => l.id === bId) ?? doc.layouts[doc.layouts.length - 1];
   const diff = diffLayouts(a, b);
+  const warnA = countBySeverity(checkLayout(doc, a.items));
+  const warnB = countBySeverity(checkLayout(doc, b.items));
   const changed = new Set(diff.moved.map((m) => m.id));
 
   const edit = (layoutId: string) => {
@@ -182,6 +185,34 @@ export function CompareView() {
                 <Legend swatch="border-2 border-dashed border-red-600">B에서 빠짐</Legend>
               </ul>
             )}
+          </section>
+          <section className="border-b border-neutral-200 px-4 py-3">
+            <h2 className="text-xs font-semibold text-neutral-500">확인할 점</h2>
+            <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+              {(
+                [
+                  ["A", a.name, warnA],
+                  ["B", b.name, warnB],
+                ] as const
+              ).map(([tag, name, w]) => (
+                <div key={tag} className="contents">
+                  <dt className="truncate text-neutral-700">
+                    <span className="mr-1 text-xs font-bold text-neutral-400">{tag}</span>
+                    {name}
+                  </dt>
+                  <dd className="text-right text-xs">
+                    {w.error + w.warning === 0 ? (
+                      <span className="text-emerald-700">문제없음</span>
+                    ) : (
+                      <>
+                        <span className="text-red-600">문제 {w.error}</span> ·{" "}
+                        <span className="text-orange-600">주의 {w.warning}</span>
+                      </>
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
           </section>
           <ChangeList diff={diff} unit={unit} onFocus={setFocusId} />
         </aside>
