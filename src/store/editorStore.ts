@@ -1,16 +1,28 @@
 import { produce, type Draft } from "immer";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { findCatalogItem } from "@/catalog/furniture";
 import type { RoomPreset } from "@/catalog/roomPresets";
 import {
   createEmptyDocument,
   createRoom,
+  newId,
   parseDocument,
+  type FurnitureItem,
   type HouseDocument,
+  type Layout,
+  type Opening,
   type Room,
   type Vec2,
 } from "@/domain/document";
-import { bounds, isSimplePolygon } from "@/geometry/polygon";
+import { normalizeAngle } from "@/geometry/furniture";
+import {
+  MIN_OPENING_WIDTH,
+  OPENING_DEFAULTS,
+  clampOffset,
+  reattachOpenings,
+} from "@/geometry/openings";
+import { bounds, edgeLength, isSimplePolygon } from "@/geometry/polygon";
 import { translatePoints } from "@/geometry/roomEdit";
 
 const HISTORY_LIMIT = 100;
@@ -23,10 +35,21 @@ const memoryStorage = {
 
 export type Tool = "select" | "rect";
 
+/** structure: 방·벽·문 편집 / furniture: 가구 배치 (구조는 잠김) */
+export type EditorMode = "structure" | "furniture";
+
 export type Selection =
   | { kind: "room"; roomId: string }
   | { kind: "edge"; roomId: string; edgeIndex: number }
-  | { kind: "vertex"; roomId: string; index: number };
+  | { kind: "vertex"; roomId: string; index: number }
+  | { kind: "opening"; roomId: string; openingId: string }
+  | { kind: "furniture"; itemId: string };
+
+export function selectedRoomId(sel: Selection | null): string | undefined {
+  return sel && "roomId" in sel ? sel.roomId : undefined;
+}
+
+export type ItemPosition = { id: string; x: number; y: number };
 
 export type Viewport = { scale: number; x: number; y: number };
 
@@ -37,6 +60,7 @@ export type EditorState = {
   /** 드래그처럼 여러 번 바뀌어도 한 번의 실행 취소로 묶을 때의 시작 상태 */
   txBase: HouseDocument | null;
 
+  mode: EditorMode;
   tool: Tool;
   selection: Selection | null;
   hoveredEdge: { roomId: string; edgeIndex: number } | null;
@@ -55,7 +79,8 @@ export type EditorState = {
   // 문서 편집
   addRoom: (name: string, points: Vec2[]) => string;
   setRoomPoints: (roomId: string, points: Vec2[]) => boolean;
-  moveRoom: (roomId: string, base: Vec2[], delta: Vec2) => void;
+  /** items: 방과 함께 옮길 가구들의 드래그 시작 위치 */
+  moveRoom: (roomId: string, base: Vec2[], delta: Vec2, items?: ItemPosition[]) => void;
   renameRoom: (roomId: string, name: string) => void;
   setRoomColor: (roomId: string, color: string) => void;
   deleteRoom: (roomId: string) => void;
@@ -64,7 +89,19 @@ export type EditorState = {
   setSettings: (settings: Partial<HouseDocument["settings"]>) => void;
   resetDocument: () => void;
 
+  // 문·창문
+  addOpening: (roomId: string, edgeIndex: number, kind: Opening["kind"]) => string | null;
+  updateOpening: (openingId: string, patch: Partial<Omit<Opening, "id" | "roomId">>) => void;
+  deleteOpening: (openingId: string) => void;
+
+  // 가구 (현재 배치안)
+  addFurniture: (catalogId: string, at: Vec2) => string | null;
+  updateFurniture: (itemId: string, patch: Partial<Omit<FurnitureItem, "id">>) => void;
+  duplicateFurniture: (itemId: string) => void;
+  deleteFurniture: (itemId: string) => void;
+
   // UI
+  setMode: (mode: EditorMode) => void;
   setTool: (tool: Tool) => void;
   select: (selection: Selection | null) => void;
   setHoveredEdge: (edge: EditorState["hoveredEdge"]) => void;
@@ -74,6 +111,15 @@ export type EditorState = {
 
 export function findRoom(doc: HouseDocument, roomId: string): Room | undefined {
   return doc.floorplan.rooms.find((r) => r.id === roomId);
+}
+
+/** 지금 편집 중인 배치안 ("현재 배치" 표시가 된 것, 없으면 첫 번째) */
+export function activeLayout<T extends { layouts: Layout[] }>(doc: T): T["layouts"][number] {
+  return doc.layouts.find((l) => l.isCurrent) ?? doc.layouts[0];
+}
+
+export function findItem(doc: HouseDocument, itemId: string): FurnitureItem | undefined {
+  return activeLayout(doc).items.find((i) => i.id === itemId);
 }
 
 /** 기존 방들 오른쪽 빈 곳의 왼쪽 위 좌표 */
@@ -91,6 +137,7 @@ export const useEditorStore = create<EditorState>()(
       past: [],
       future: [],
       txBase: null,
+      mode: "structure",
       tool: "select",
       selection: null,
       hoveredEdge: null,
@@ -151,14 +198,32 @@ export const useEditorStore = create<EditorState>()(
         if (!isSimplePolygon(points)) return false;
         get().apply((d) => {
           const room = d.floorplan.rooms.find((r) => r.id === roomId);
-          if (room) room.points = points;
+          if (!room) return;
+          // 문·창이 붙은 벽을 새 모양에서 다시 찾는다
+          const mine = d.floorplan.openings.filter((o) => o.roomId === roomId);
+          if (mine.length > 0) {
+            const moved = reattachOpenings(room.points, points, mine as Opening[]);
+            d.floorplan.openings = [
+              ...d.floorplan.openings.filter((o) => o.roomId !== roomId),
+              ...moved,
+            ];
+          }
+          room.points = points;
         });
         return true;
       },
-      moveRoom: (roomId, base, delta) => {
+      moveRoom: (roomId, base, delta, items = []) => {
         get().apply((d) => {
           const room = d.floorplan.rooms.find((r) => r.id === roomId);
           if (room) room.points = translatePoints(base, delta);
+          const layout = activeLayout(d);
+          for (const p of items) {
+            const item = layout.items.find((i) => i.id === p.id);
+            if (item) {
+              item.x = Math.round(p.x + delta.x);
+              item.y = Math.round(p.y + delta.y);
+            }
+          }
         });
       },
       renameRoom: (roomId, name) => {
@@ -225,6 +290,103 @@ export const useEditorStore = create<EditorState>()(
         set({ selection: null });
       },
 
+      addOpening: (roomId, edgeIndex, kind) => {
+        const room = findRoom(get().doc, roomId);
+        if (!room) return null;
+        const len = edgeLength(room.points, edgeIndex);
+        if (len < MIN_OPENING_WIDTH) return null;
+        const defaults = OPENING_DEFAULTS[kind];
+        const width = Math.min(defaults.width, Math.floor(len));
+        const opening: Opening = {
+          id: newId(),
+          roomId,
+          edgeIndex,
+          offset: clampOffset(len, width, (len - width) / 2),
+          ...defaults,
+          width,
+          kind,
+          swing: { side: "in", hinge: "start" },
+        };
+        get().apply((d) => {
+          d.floorplan.openings.push(opening);
+        });
+        set({ selection: { kind: "opening", roomId, openingId: opening.id } });
+        return opening.id;
+      },
+      updateOpening: (openingId, patch) => {
+        get().apply((d) => {
+          const o = d.floorplan.openings.find((x) => x.id === openingId);
+          const room = o && d.floorplan.rooms.find((r) => r.id === o.roomId);
+          if (!o || !room) return;
+          Object.assign(o, patch);
+          if (patch.kind && !patch.width) {
+            Object.assign(o, OPENING_DEFAULTS[patch.kind]);
+          }
+          const len = edgeLength(room.points, o.edgeIndex);
+          o.width = Math.max(MIN_OPENING_WIDTH, Math.min(o.width, Math.floor(len)));
+          o.offset = clampOffset(len, o.width, o.offset);
+        });
+      },
+      deleteOpening: (openingId) => {
+        get().apply((d) => {
+          d.floorplan.openings = d.floorplan.openings.filter((o) => o.id !== openingId);
+        });
+        set({ selection: null });
+      },
+
+      addFurniture: (catalogId, at) => {
+        const c = findCatalogItem(catalogId);
+        if (!c) return null;
+        const item: FurnitureItem = {
+          id: newId(),
+          catalogId,
+          name: c.name,
+          x: Math.round(at.x),
+          y: Math.round(at.y),
+          rotation: 0,
+          width: c.width,
+          depth: c.depth,
+          height: c.height,
+          color: c.color,
+        };
+        get().apply((d) => {
+          activeLayout(d).items.push(item);
+        });
+        set({
+          selection: { kind: "furniture", itemId: item.id },
+          mode: "furniture",
+          tool: "select",
+        });
+        return item.id;
+      },
+      updateFurniture: (itemId, patch) => {
+        get().apply((d) => {
+          const item = activeLayout(d).items.find((i) => i.id === itemId);
+          if (!item) return;
+          Object.assign(item, patch);
+          if (patch.rotation !== undefined) item.rotation = normalizeAngle(patch.rotation);
+          if (patch.x !== undefined) item.x = Math.round(patch.x);
+          if (patch.y !== undefined) item.y = Math.round(patch.y);
+        });
+      },
+      duplicateFurniture: (itemId) => {
+        const src = findItem(get().doc, itemId);
+        if (!src) return;
+        const copy = { ...src, id: newId(), x: src.x + 200, y: src.y + 200 };
+        get().apply((d) => {
+          activeLayout(d).items.push(copy);
+        });
+        set({ selection: { kind: "furniture", itemId: copy.id } });
+      },
+      deleteFurniture: (itemId) => {
+        get().apply((d) => {
+          const layout = activeLayout(d);
+          layout.items = layout.items.filter((i) => i.id !== itemId);
+        });
+        set({ selection: null });
+      },
+
+      setMode: (mode) => set({ mode, tool: "select", selection: null, hoveredEdge: null }),
       setTool: (tool) => set({ tool }),
       select: (selection) => set({ selection }),
       setHoveredEdge: (hoveredEdge) => set({ hoveredEdge }),

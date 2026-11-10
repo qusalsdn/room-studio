@@ -1,7 +1,7 @@
 "use client";
 
 import type { KonvaEventObject } from "konva/lib/Node";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
 import { Circle, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
 import type { Room, Vec2 } from "@/domain/document";
 import {
@@ -14,6 +14,7 @@ import {
   edgeAxis,
   offsetPolygon,
   outwardNormal,
+  pointInPolygon,
   polygonArea,
   snapPoint,
   snapValue,
@@ -26,14 +27,39 @@ import {
   removeDuplicatePoints,
   splitEdge,
 } from "@/geometry/roomEdit";
+import { FURNITURE_DRAG_TYPE } from "@/catalog/furniture";
+import {
+  collectSnapLines,
+  normalizeAngle,
+  snapAngle,
+  snapItemPosition,
+  type SnapLines,
+} from "@/geometry/furniture";
+import { offsetForCenter } from "@/geometry/openings";
 import { formatArea, formatLength } from "@/lib/format";
-import { findRoom, useEditorStore, type Viewport } from "@/store/editorStore";
+import {
+  activeLayout,
+  findItem,
+  findRoom,
+  selectedRoomId,
+  useEditorStore,
+  type ItemPosition,
+  type Viewport,
+} from "@/store/editorStore";
 import { COLORS, MAX_SCALE, MIN_RECT_SIZE, MIN_SCALE, SNAP_STEP } from "./constants";
+import { FurnitureShape } from "./FurnitureShape";
 import { Grid } from "./Grid";
+import { OpeningShape } from "./OpeningShape";
+
+const ITEM_GRID = 10; // 가구는 1cm 단위
+const SNAP_PX = 10; // 벽·가구에 붙는 거리 (화면 px)
 
 type DragState =
   | { kind: "pan"; startScreen: Vec2; startViewport: Viewport }
-  | { kind: "room"; roomId: string; base: Vec2[]; start: Vec2 }
+  | { kind: "room"; roomId: string; base: Vec2[]; start: Vec2; items: ItemPosition[] }
+  | { kind: "opening"; openingId: string; roomId: string }
+  | { kind: "item"; itemId: string; grab: Vec2; lines: SnapLines }
+  | { kind: "rotate"; itemId: string; center: Vec2 }
   | { kind: "vertex"; roomId: string; index: number; base: Vec2[] }
   | { kind: "edge"; roomId: string; edgeIndex: number; base: Vec2[]; start: Vec2; normal: Vec2 }
   | { kind: "rect"; start: Vec2 };
@@ -58,6 +84,7 @@ export default function FloorplanCanvas() {
   const [rectPreview, setRectPreview] = useState<{ a: Vec2; b: Vec2 } | null>(null);
   const [hoverCursor, setHoverCursor] = useState("default");
   const [panning, setPanning] = useState(false);
+  const [guides, setGuides] = useState<{ x?: number; y?: number } | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const spaceRef = useRef(false);
   const didInitialFit = useRef(false);
@@ -65,13 +92,19 @@ export default function FloorplanCanvas() {
   const doc = useEditorStore((s) => s.doc);
   const viewport = useEditorStore((s) => s.viewport);
   const tool = useEditorStore((s) => s.tool);
+  const mode = useEditorStore((s) => s.mode);
   const selection = useEditorStore((s) => s.selection);
   const hoveredEdge = useEditorStore((s) => s.hoveredEdge);
   const fitRequest = useEditorStore((s) => s.fitRequest);
 
-  const { rooms } = doc.floorplan;
+  const { rooms, openings } = doc.floorplan;
+  const { items } = activeLayout(doc);
   const { wallThickness, displayUnit } = doc.settings;
-  const selectedRoom = selection ? rooms.find((r) => r.id === selection.roomId) : undefined;
+  const structureMode = mode === "structure";
+  const selRoomId = selectedRoomId(selection);
+  const selectedRoom =
+    structureMode && selRoomId ? rooms.find((r) => r.id === selRoomId) : undefined;
+  const selectedItemId = selection?.kind === "furniture" ? selection.itemId : undefined;
 
   // 컨테이너 크기 추적
   useEffect(() => {
@@ -143,7 +176,44 @@ export default function FloorplanCanvas() {
             x: snapValue(anchor.x + world.x - drag.start.x, step) - anchor.x,
             y: snapValue(anchor.y + world.y - drag.start.y, step) - anchor.y,
           };
-          s.moveRoom(drag.roomId, drag.base, delta);
+          s.moveRoom(drag.roomId, drag.base, delta, drag.items);
+          break;
+        }
+        case "opening": {
+          const room = findRoom(s.doc, drag.roomId);
+          const o = s.doc.floorplan.openings.find((x) => x.id === drag.openingId);
+          if (!room || !o) break;
+          const offset = offsetForCenter(room.points, o.edgeIndex, o.width, world);
+          s.updateOpening(o.id, { offset: evt.altKey ? offset : snapValue(offset, 10) });
+          break;
+        }
+        case "item": {
+          const item = findItem(s.doc, drag.itemId);
+          if (!item) break;
+          const target = { x: world.x + drag.grab.x, y: world.y + drag.grab.y };
+          if (evt.altKey) {
+            s.updateFurniture(item.id, target);
+            setGuides(null);
+          } else {
+            const r = snapItemPosition(
+              item,
+              target,
+              drag.lines,
+              SNAP_PX / s.viewport.scale,
+              ITEM_GRID,
+            );
+            s.updateFurniture(item.id, r.position);
+            setGuides(r.guides);
+          }
+          break;
+        }
+        case "rotate": {
+          const v = sub(world, drag.center);
+          // 회전 손잡이는 가구 뒤쪽(-y)에 있으므로 +90°
+          const deg = normalizeAngle((Math.atan2(v.y, v.x) * 180) / Math.PI + 90);
+          s.updateFurniture(drag.itemId, {
+            rotation: evt.shiftKey ? Math.round(deg) : snapAngle(deg, 15),
+          });
           break;
         }
         case "vertex":
@@ -168,6 +238,7 @@ export default function FloorplanCanvas() {
       if (!drag) return;
       dragRef.current = null;
       const s = useEditorStore.getState();
+      setGuides(null);
 
       if (drag.kind === "pan") {
         setPanning(false);
@@ -213,6 +284,7 @@ export default function FloorplanCanvas() {
       if (evt.key === "Escape" && dragRef.current) {
         const kind = dragRef.current.kind;
         dragRef.current = null;
+        setGuides(null);
         if (kind === "rect") setRectPreview(null);
         else if (kind === "pan") setPanning(false);
         else useEditorStore.getState().cancelTransaction();
@@ -258,7 +330,7 @@ export default function FloorplanCanvas() {
     const s = useEditorStore.getState();
     if (e.evt.button === 1 || spaceRef.current) {
       startPan(e);
-    } else if (e.evt.button === 0 && s.tool === "rect") {
+    } else if (e.evt.button === 0 && s.tool === "rect" && s.mode === "structure") {
       const start = snapPoint(pointerWorld(e), SNAP_STEP);
       dragRef.current = { kind: "rect", start };
       setRectPreview({ a: start, b: start });
@@ -291,7 +363,72 @@ export default function FloorplanCanvas() {
     const s = useEditorStore.getState();
     s.select({ kind: "room", roomId: room.id });
     s.beginTransaction();
-    dragRef.current = { kind: "room", roomId: room.id, base: room.points, start: pointerWorld(e) };
+    // 방 안에 있는 가구도 함께 옮긴다
+    const inside = activeLayout(s.doc)
+      .items.filter((i) => pointInPolygon(i, room.points))
+      .map((i) => ({ id: i.id, x: i.x, y: i.y }));
+    dragRef.current = {
+      kind: "room",
+      roomId: room.id,
+      base: room.points,
+      start: pointerWorld(e),
+      items: inside,
+    };
+  };
+
+  const onOpeningPointerDown =
+    (roomId: string, openingId: string) => (e: KonvaEventObject<PointerEvent>) => {
+      if (!canEditShapes(e)) return;
+      e.cancelBubble = true;
+      const s = useEditorStore.getState();
+      s.select({ kind: "opening", roomId, openingId });
+      s.beginTransaction();
+      dragRef.current = { kind: "opening", openingId, roomId };
+    };
+
+  const onItemPointerDown = (itemId: string) => (e: KonvaEventObject<PointerEvent>) => {
+    if (!canEditShapes(e)) return;
+    e.cancelBubble = true;
+    const s = useEditorStore.getState();
+    const item = findItem(s.doc, itemId);
+    if (!item) return;
+    s.select({ kind: "furniture", itemId });
+    s.beginTransaction();
+    const w = pointerWorld(e);
+    const others = activeLayout(s.doc).items.filter((i) => i.id !== itemId);
+    dragRef.current = {
+      kind: "item",
+      itemId,
+      grab: { x: item.x - w.x, y: item.y - w.y },
+      lines: collectSnapLines(s.doc.floorplan.rooms, others),
+    };
+  };
+
+  const onRotatePointerDown = (itemId: string) => (e: KonvaEventObject<PointerEvent>) => {
+    if (!canEditShapes(e)) return;
+    e.cancelBubble = true;
+    const s = useEditorStore.getState();
+    const item = findItem(s.doc, itemId);
+    if (!item) return;
+    s.beginTransaction();
+    dragRef.current = { kind: "rotate", itemId, center: { x: item.x, y: item.y } };
+  };
+
+  // 카탈로그에서 끌어다 놓기
+  const onDragOver = (e: DragEvent) => {
+    if (e.dataTransfer.types.includes(FURNITURE_DRAG_TYPE)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    }
+  };
+  const onDrop = (e: DragEvent) => {
+    const catalogId = e.dataTransfer.getData(FURNITURE_DRAG_TYPE);
+    if (!catalogId) return;
+    e.preventDefault();
+    const r = containerRef.current!.getBoundingClientRect();
+    const s = useEditorStore.getState();
+    const w = toWorld({ x: e.clientX - r.left, y: e.clientY - r.top }, s.viewport);
+    s.addFurniture(catalogId, { x: snapValue(w.x, ITEM_GRID), y: snapValue(w.y, ITEM_GRID) });
   };
 
   const onVertexPointerDown =
@@ -333,7 +470,11 @@ export default function FloorplanCanvas() {
   };
 
   const { scale } = viewport;
-  const cursor = panning ? "grabbing" : tool === "rect" ? "crosshair" : hoverCursor;
+  const cursor = panning
+    ? "grabbing"
+    : tool === "rect" && structureMode
+      ? "crosshair"
+      : hoverCursor;
 
   const label = (
     key: string,
@@ -367,8 +508,11 @@ export default function FloorplanCanvas() {
   return (
     <div
       ref={containerRef}
+      data-floorplan-canvas
       className="relative h-full w-full overflow-hidden select-none"
       style={{ cursor, background: COLORS.background }}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
     >
       {size.width > 0 && (
         <Stage
@@ -390,6 +534,7 @@ export default function FloorplanCanvas() {
                   points={flat(offsetPolygon(room.points, wallThickness))}
                   closed
                   fill={COLORS.wall}
+                  listening={structureMode}
                   onPointerDown={onRoomPointerDown(room)}
                   onMouseEnter={() => setHoverCursor("move")}
                   onMouseLeave={() => setHoverCursor("default")}
@@ -407,6 +552,7 @@ export default function FloorplanCanvas() {
                     stroke={selected ? COLORS.accent : undefined}
                     strokeWidth={selected ? 2 : 0}
                     strokeScaleEnabled={false}
+                    listening={structureMode}
                     onPointerDown={onRoomPointerDown(room)}
                     onMouseEnter={() => setHoverCursor("move")}
                     onMouseLeave={() => setHoverCursor("default")}
@@ -447,6 +593,84 @@ export default function FloorplanCanvas() {
                   </Group>
                 );
               })}
+              {/* 문·창문 */}
+              {openings.map((o) => {
+                const room = rooms.find((r) => r.id === o.roomId);
+                if (!room) return null;
+                return (
+                  <OpeningShape
+                    key={o.id}
+                    points={room.points}
+                    opening={o}
+                    wallThickness={wallThickness}
+                    floorColor={room.floorColor}
+                    selected={selection?.kind === "opening" && selection.openingId === o.id}
+                    interactive={structureMode}
+                    scale={scale}
+                    onPointerDown={onOpeningPointerDown(room.id, o.id)}
+                    onHover={(h) => setHoverCursor(h ? "pointer" : "default")}
+                  />
+                );
+              })}
+              {/* 가구 */}
+              {items.map((item) => (
+                <FurnitureShape
+                  key={item.id}
+                  item={item}
+                  selected={item.id === selectedItemId}
+                  interactive={!structureMode}
+                  dimmed={structureMode}
+                  scale={scale}
+                  onPointerDown={onItemPointerDown(item.id)}
+                  onRotateStart={onRotatePointerDown(item.id)}
+                  onHover={(c) => setHoverCursor(c ?? "default")}
+                />
+              ))}
+              {!structureMode &&
+                items.map((item) => {
+                  const selected = item.id === selectedItemId;
+                  if (!selected && Math.min(item.width, item.depth) * scale < 36) return null;
+                  return (
+                    <Group key={`item-label-${item.id}`} listening={false}>
+                      {label(
+                        "n",
+                        { x: item.x, y: item.y - (selected ? 7 : 0) / scale },
+                        item.name,
+                        {
+                          size: 11,
+                          bold: selected,
+                          color: COLORS.labelStrong,
+                        },
+                      )}
+                      {selected &&
+                        label(
+                          "d",
+                          { x: item.x, y: item.y + 8 / scale },
+                          `${formatLength(item.width, displayUnit)} × ${formatLength(item.depth, displayUnit)}`,
+                          { size: 10 },
+                        )}
+                    </Group>
+                  );
+                })}
+              {/* 스냅 안내선 */}
+              {guides?.x !== undefined && (
+                <Line
+                  points={[guides.x, -1e6, guides.x, 1e6]}
+                  stroke={COLORS.guide}
+                  strokeWidth={1 / scale}
+                  dash={[4 / scale, 4 / scale]}
+                  listening={false}
+                />
+              )}
+              {guides?.y !== undefined && (
+                <Line
+                  points={[-1e6, guides.y, 1e6, guides.y]}
+                  stroke={COLORS.guide}
+                  strokeWidth={1 / scale}
+                  dash={[4 / scale, 4 / scale]}
+                  listening={false}
+                />
+              )}
               {/* 선택된 방: 벽 드래그 핸들, 꼭짓점 핸들 */}
               {selectedRoom && (
                 <Group>

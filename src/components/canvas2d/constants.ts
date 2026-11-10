@@ -12,4 +12,5 @@ export const COLORS = {
   accentSoft: "rgba(37, 99, 235, 0.12)",
   label: "#52525b",
   labelStrong: "#18181b",
+  guide: "#ec4899",
 };

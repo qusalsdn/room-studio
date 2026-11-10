@@ -5,23 +5,44 @@ import { distance, edgeAt, polygonArea } from "@/geometry/polygon";
 import { removeVertex, setEdgeLength, splitEdge } from "@/geometry/roomEdit";
 import { MIN_EDGE } from "@/geometry/roomEdit";
 import { formatArea } from "@/lib/format";
-import { useEditorStore } from "@/store/editorStore";
+import { findItem, selectedRoomId, useEditorStore } from "@/store/editorStore";
 import { Button, LengthField, Section, TextField } from "./fields";
+import {
+  FurnitureInspector,
+  FurnitureListSection,
+  OpeningInspector,
+  WallOpeningsSection,
+} from "./ObjectInspectors";
 
 export function Inspector() {
   const doc = useEditorStore((s) => s.doc);
   const selection = useEditorStore((s) => s.selection);
-  const room = selection ? doc.floorplan.rooms.find((r) => r.id === selection.roomId) : undefined;
+  const mode = useEditorStore((s) => s.mode);
+  const roomId = selectedRoomId(selection);
+  const room = roomId ? doc.floorplan.rooms.find((r) => r.id === roomId) : undefined;
+  const item = selection?.kind === "furniture" ? findItem(doc, selection.itemId) : undefined;
+  const opening =
+    selection?.kind === "opening"
+      ? doc.floorplan.openings.find((o) => o.id === selection.openingId)
+      : undefined;
+
+  let content;
+  if (item) content = <FurnitureInspector key={item.id} item={item} />;
+  else if (opening && room)
+    content = <OpeningInspector key={opening.id} opening={opening} room={room} />;
+  else if (room && mode === "structure") content = <RoomInspector room={room} />;
+  else content = <HouseInspector />;
 
   return (
     <aside className="flex w-72 shrink-0 flex-col overflow-y-auto border-l border-neutral-200 bg-white">
-      {room ? <RoomInspector room={room} /> : <HouseInspector />}
+      {content}
     </aside>
   );
 }
 
 function HouseInspector() {
   const doc = useEditorStore((s) => s.doc);
+  const mode = useEditorStore((s) => s.mode);
   const s = useEditorStore.getState;
   const { settings } = doc;
   const totalArea = doc.floorplan.rooms.reduce((sum, r) => sum + polygonArea(r.points), 0);
@@ -74,6 +95,8 @@ function HouseInspector() {
           </select>
         </label>
       </Section>
+
+      {mode === "furniture" && <FurnitureListSection />}
 
       <Section title="방 목록">
         {doc.floorplan.rooms.length === 0 ? (
@@ -202,6 +225,10 @@ function RoomInspector({ room }: { room: Room }) {
           길이를 바꾸면 그 벽 끝 너머가 함께 밀려서 직각이 유지돼요.
         </p>
       </Section>
+
+      {selection?.kind === "edge" && (
+        <WallOpeningsSection room={room} edgeIndex={selection.edgeIndex} />
+      )}
 
       <Section title="편집">
         {vertexIndex !== null && (

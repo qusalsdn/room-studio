@@ -9,6 +9,7 @@ export function Toolbar() {
   const canUndo = useEditorStore((s) => s.past.length > 0);
   const canRedo = useEditorStore((s) => s.future.length > 0);
   const scale = useEditorStore((s) => s.viewport.scale);
+  const mode = useEditorStore((s) => s.mode);
   const s = useEditorStore.getState;
 
   return (
@@ -18,9 +19,35 @@ export function Toolbar() {
       </Link>
       <span className="text-neutral-300">/</span>
       <span className="truncate text-sm text-neutral-700">{name}</span>
-      <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-500">
-        구조 편집
-      </span>
+
+      <div
+        role="tablist"
+        aria-label="편집 모드"
+        className="ml-4 flex rounded-lg bg-neutral-100 p-0.5 text-sm"
+      >
+        {(
+          [
+            ["structure", "구조", "1"],
+            ["furniture", "가구 배치", "2"],
+          ] as const
+        ).map(([value, text, key]) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={mode === value}
+            title={`${text} 모드 (${key})`}
+            onClick={() => s().setMode(value)}
+            className={`rounded-md px-3 py-1 font-medium transition-colors ${
+              mode === value
+                ? "bg-white text-neutral-900 shadow-sm"
+                : "text-neutral-500 hover:text-neutral-800"
+            }`}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
 
       <div className="ml-auto flex items-center gap-1">
         <Button

@@ -7,6 +7,7 @@ import { translatePoints } from "@/geometry/roomEdit";
 import { bounds } from "@/geometry/polygon";
 import { useEditorStore } from "@/store/editorStore";
 import { Button, LengthField, Section } from "./fields";
+import { FurniturePanel } from "./FurniturePanel";
 
 function PresetThumb({ preset }: { preset: RoomPreset }) {
   const pts = preset.rooms.flatMap((r) => r.points);
@@ -33,7 +34,7 @@ function PresetThumb({ preset }: { preset: RoomPreset }) {
   );
 }
 
-export function Sidebar() {
+function StructurePanel() {
   const tool = useEditorStore((s) => s.tool);
   const setTool = useEditorStore((s) => s.setTool);
   const unit = useEditorStore((s) => s.doc.settings.displayUnit);
@@ -62,7 +63,7 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col overflow-y-auto border-r border-neutral-200 bg-white">
+    <>
       <Section title="도구">
         <div className="grid grid-cols-2 gap-2">
           <Button
@@ -142,10 +143,21 @@ export function Sidebar() {
           <li>벽 드래그: 벽 밀기, 벽 더블클릭: 꼭짓점 추가</li>
           <li>꼭짓점 드래그: Shift 누르면 직각 유지 해제</li>
           <li>Alt 누른 채 드래그: 5cm 스냅 끄기</li>
-          <li>Delete: 선택한 방·꼭짓점 삭제</li>
+          <li>벽 클릭 → 오른쪽 패널에서 문·창문 달기</li>
+          <li>문·창문 드래그: 벽을 따라 이동</li>
+          <li>Delete: 선택한 방·꼭짓점·문 삭제</li>
           <li>⌘Z / ⇧⌘Z: 실행 취소 / 다시 실행</li>
         </ul>
       </Section>
+    </>
+  );
+}
+
+export function Sidebar() {
+  const mode = useEditorStore((s) => s.mode);
+  return (
+    <aside className="flex w-64 shrink-0 flex-col overflow-y-auto border-r border-neutral-200 bg-white">
+      {mode === "structure" ? <StructurePanel /> : <FurniturePanel />}
     </aside>
   );
 }

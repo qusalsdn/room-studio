@@ -68,3 +68,41 @@ describe("editor store", () => {
     expect(rooms[4].points[0]).toEqual({ x: 9300, y: 0 });
   });
 });
+
+describe("furniture and openings", () => {
+  it("adds, duplicates and deletes furniture in the current layout", () => {
+    const id = store.getState().addFurniture("bed-queen", { x: 1000, y: 1000 })!;
+    expect(store.getState().mode).toBe("furniture");
+    store.getState().duplicateFurniture(id);
+    const items = store.getState().doc.layouts[0].items;
+    expect(items).toHaveLength(2);
+    expect(items[1]).toMatchObject({ name: "퀸 침대", x: 1200, y: 1200, width: 1500 });
+
+    store.getState().updateFurniture(id, { rotation: -90 });
+    expect(store.getState().doc.layouts[0].items[0].rotation).toBe(270);
+
+    store.getState().deleteFurniture(id);
+    expect(store.getState().doc.layouts[0].items).toHaveLength(1);
+  });
+
+  it("moves furniture inside a room together with the room", () => {
+    const roomId = store.getState().addRoom("방", rectPoints(0, 0, 3000, 3000));
+    const itemId = store.getState().addFurniture("desk", { x: 500, y: 500 })!;
+    const base = store.getState().doc.floorplan.rooms[0].points;
+    store.getState().moveRoom(roomId, base, { x: 1000, y: 0 }, [{ id: itemId, x: 500, y: 500 }]);
+    expect(store.getState().doc.layouts[0].items[0]).toMatchObject({ x: 1500, y: 500 });
+  });
+
+  it("keeps a door on its wall when the wall length changes", () => {
+    const roomId = store.getState().addRoom("방", rectPoints(0, 0, 4000, 3000));
+    const doorId = store.getState().addOpening(roomId, 0, "hinged-door")!;
+    expect(store.getState().doc.floorplan.openings[0]).toMatchObject({ offset: 1550, width: 900 });
+
+    // 문을 줄이면 offset이 벽 안에 머문다
+    store.getState().updateOpening(doorId, { offset: 99999 });
+    expect(store.getState().doc.floorplan.openings[0].offset).toBe(3100);
+
+    store.getState().deleteRoom(roomId);
+    expect(store.getState().doc.floorplan.openings).toHaveLength(0);
+  });
+});
