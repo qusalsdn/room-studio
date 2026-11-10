@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
 import { SharedViewerClient } from "@/components/shared/SharedViewerClient";
 import { getSharedProject } from "@/lib/sharedProject";
 import { currentLayout } from "@/store/editorStore";
@@ -21,23 +20,13 @@ export async function generateMetadata({ params }: PageProps<"/s/[token]">): Pro
   };
 }
 
-async function Shared({ params }: { params: PageProps<"/s/[token]">["params"] }) {
+// 공유 데이터를 먼저 읽고 응답해야 없는·끊긴 링크에 404 상태를 돌려줄 수 있다.
+// (Suspense로 먼저 흘려보내면 상태 코드가 200으로 고정된다)
+export const instant = false;
+
+export default async function SharedPage({ params }: PageProps<"/s/[token]">) {
   const { token } = await params;
   const project = await getSharedProject(token);
   if (!project) notFound();
   return <SharedViewerClient project={project} token={token} />;
-}
-
-export default function SharedPage({ params }: PageProps<"/s/[token]">) {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex h-dvh items-center justify-center text-sm text-neutral-500">
-          불러오는 중…
-        </div>
-      }
-    >
-      <Shared params={params} />
-    </Suspense>
-  );
 }
