@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { createEmptyDocument, type HouseDocument } from "@/domain/document";
 import { bounds, polygonArea } from "@/geometry/polygon";
 import { displayName, signOut, useAuth } from "@/lib/auth";
@@ -81,6 +81,9 @@ export function ProjectList() {
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // 개발 서버에서는 편집기 화면을 처음 열 때 컴파일로 몇 초 걸린다. 그동안 '여는 중'을 보여 준다
+  const [navigating, startNavigation] = useTransition();
+  const working = busy || navigating;
   const [guestDoc, setGuestDoc] = useState<HouseDocument | null>(() => readGuestDocument());
 
   useEffect(() => {
@@ -101,7 +104,7 @@ export function ProjectList() {
     setBusy(true);
     try {
       const id = await createProject(doc);
-      router.push(`/p/${id}`);
+      startNavigation(() => router.push(`/p/${id}`));
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
@@ -115,7 +118,7 @@ export function ProjectList() {
       const id = await createProject(guestDoc);
       clearGuestDocument();
       setGuestDoc(null);
-      router.push(`/p/${id}`);
+      startNavigation(() => router.push(`/p/${id}`));
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
@@ -175,7 +178,7 @@ export function ProjectList() {
           </p>
           <button
             type="button"
-            disabled={busy}
+            disabled={working}
             onClick={importGuest}
             className="rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
           >
@@ -194,11 +197,18 @@ export function ProjectList() {
         <li>
           <button
             type="button"
-            disabled={busy}
+            disabled={working}
             onClick={() => open(createEmptyDocument(`우리 집 ${(projects?.length ?? 0) + 1}`))}
+            aria-busy={working}
             className="flex h-full min-h-56 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-neutral-300 text-sm font-medium text-neutral-600 hover:border-blue-400 hover:text-blue-700 disabled:opacity-50"
           >
-            <span className="text-2xl">＋</span>새 프로젝트
+            {working ? (
+              "여는 중…"
+            ) : (
+              <>
+                <span className="text-2xl">＋</span>새 프로젝트
+              </>
+            )}
           </button>
         </li>
         {projects === null && !error && (
@@ -212,10 +222,11 @@ export function ProjectList() {
           return (
             <li
               key={p.id}
-              className="group overflow-hidden rounded-xl bg-white ring-1 ring-neutral-200 hover:ring-blue-300"
+              className="group relative overflow-hidden rounded-xl bg-white ring-1 ring-neutral-200 hover:ring-blue-300"
             >
               <Link href={`/p/${p.id}`} className="block">
                 <Thumbnail doc={p.document} />
+                <OpeningHint />
                 <div className="px-4 pt-3">
                   <p className="truncate font-medium text-neutral-900">{p.name}</p>
                   <p className="mt-0.5 text-xs text-neutral-500">
@@ -237,5 +248,16 @@ export function ProjectList() {
         })}
       </ul>
     </main>
+  );
+}
+
+/** 카드를 눌렀을 때 편집기가 뜰 때까지 표시 */
+function OpeningHint() {
+  const { pending } = useLinkStatus();
+  if (!pending) return null;
+  return (
+    <span className="absolute inset-x-0 top-0 bg-blue-600 py-1 text-center text-xs font-medium text-white">
+      여는 중…
+    </span>
   );
 }
