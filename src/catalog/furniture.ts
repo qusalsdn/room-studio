@@ -226,6 +226,17 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     clearance: { front: 600 },
   },
   {
+    id: "jangnong",
+    name: "장롱",
+    category: "storage",
+    width: 2400,
+    depth: 600,
+    height: 2300,
+    color: wood,
+    symbol: "plain",
+    clearance: { front: 600 },
+  },
+  {
     id: "hanger",
     name: "행거",
     category: "storage",
