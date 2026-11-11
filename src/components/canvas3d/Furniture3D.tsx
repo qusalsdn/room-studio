@@ -183,6 +183,96 @@ export function Furniture3D({ item, selected, onSelect }: Props) {
         ))}
       </>
     );
+  } else if (item.catalogId === "crib") {
+    // 베이비 침대: 네 기둥 + 위아래 난간 + 긴 쪽 세로 살 + 짧은 쪽 막힌 판, 안에 매트리스
+    const post = Math.min(0.05, w * 0.08, d * 0.08);
+    const rail = 0.035;
+    const deck = Math.min(0.32, h * 0.38); // 매트리스 받침 높이
+    const pad = Math.min(0.1, (h - deck) * 0.35); // 매트리스 두께
+    const innerW = w - post * 2;
+    const innerD = d - post * 2;
+    const slatH = h - deck - rail * 2;
+    const slatCount = (len: number) => Math.max(2, Math.round(len / 0.075));
+    const longSlats = slatCount(innerW);
+    const panelH = h - deck - rail;
+    body = (
+      <>
+        {/* 네 기둥 (위는 살짝 둥근 머리) */}
+        {[
+          [-1, -1],
+          [1, -1],
+          [1, 1],
+          [-1, 1],
+        ].map(([sx, sz], i) => (
+          <group key={`p${i}`} position={[sx * (w / 2 - post / 2), 0, sz * (d / 2 - post / 2)]}>
+            <Box size={[post, h, post]} position={[0, h / 2, 0]} color={color} selected={s} />
+            <mesh position={[0, h + post * 0.25, 0]} castShadow>
+              <sphereGeometry args={[post * 0.55, 16, 12]} />
+              <Mat color={color} selected={s} />
+            </mesh>
+          </group>
+        ))}
+        {/* 긴 쪽: 위·아래 난간과 세로 살 */}
+        {[-1, 1].map((sz) => (
+          <group key={`l${sz}`} position={[0, 0, sz * (d / 2 - post / 2)]}>
+            <Box
+              size={[innerW, rail, rail]}
+              position={[0, h - rail / 2, 0]}
+              color={color}
+              selected={s}
+            />
+            <Box
+              size={[innerW, rail, rail]}
+              position={[0, deck + rail / 2, 0]}
+              color={color}
+              selected={s}
+            />
+            {Array.from({ length: longSlats }, (_, i) => (
+              <mesh
+                key={i}
+                position={[-innerW / 2 + (innerW / (longSlats + 1)) * (i + 1), deck + rail + slatH / 2, 0]}
+                castShadow
+              >
+                <cylinderGeometry args={[0.011, 0.011, slatH, 10]} />
+                <Mat color={color} selected={s} />
+              </mesh>
+            ))}
+          </group>
+        ))}
+        {/* 짧은 쪽: 막힌 판 (머리·발 쪽) */}
+        {[-1, 1].map((sx) => (
+          <Box
+            key={`e${sx}`}
+            size={[0.02, panelH, innerD]}
+            position={[sx * (w / 2 - post / 2), deck + panelH / 2, 0]}
+            color={shade(color, 0.06)}
+            selected={s}
+          />
+        ))}
+        {/* 바닥 쪽 가로대 (다리 사이 틀) */}
+        {[-1, 1].map((sz) => (
+          <Box
+            key={`b${sz}`}
+            size={[innerW, 0.06, 0.02]}
+            position={[0, deck - 0.03, sz * (d / 2 - post / 2)]}
+            color={dark}
+            edges={false}
+          />
+        ))}
+        {/* 매트리스와 접힌 이불 */}
+        <Box
+          size={[innerW - 0.02, pad, innerD - 0.02]}
+          position={[0, deck + rail + pad / 2, 0]}
+          color="#fafaf9"
+        />
+        <Box
+          size={[innerW * 0.38, 0.04, innerD - 0.06]}
+          position={[innerW * 0.25, deck + rail + pad + 0.02, 0]}
+          color={shade(color, 0.22)}
+          edges={false}
+        />
+      </>
+    );
   } else if (symbol === "bed") {
     const base = h * 0.5;
     const mattress = h - base;
