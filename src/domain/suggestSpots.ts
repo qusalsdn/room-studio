@@ -1,4 +1,5 @@
-import { rankSpots, roomOf, type Candidate } from "@/domain/autoArrange";
+import { ruleTerms } from "@/domain/arrangeRules";
+import { rankSpots, roomOf, type Candidate, type RankedSpot } from "@/domain/autoArrange";
 import type { FurnitureItem, HouseDocument } from "@/domain/document";
 
 /**
@@ -57,12 +58,22 @@ export function suggestSpots(
     currentIsBest = spots.length === 0 && Number.isFinite(currentCost);
   }
 
+  const reasonsOf = (spot: RankedSpot) => {
+    const reasons = ruleTerms(
+      { ...item, ...spot },
+      { room, openings: doc.floorplan.openings, placed: others },
+    ).reasons;
+    if (spot.addedWarnings > 0) reasons.push(`확인할 점 ${spot.addedWarnings}개`);
+    else if (reasons.length === 0) reasons.push("겹치거나 막는 것 없음");
+    return reasons;
+  };
+
   return {
     spots: spots.slice(0, SUGGESTION_COUNT).map((s) => ({
       x: s.x,
       y: s.y,
       rotation: s.rotation,
-      reasons: [],
+      reasons: reasonsOf(s),
     })),
     currentIsBest,
   };

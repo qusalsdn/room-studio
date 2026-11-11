@@ -38,7 +38,12 @@ describe("suggestSpots", () => {
     expect(currentIsBest).toBe(false);
     expect(spots).toHaveLength(3);
     // 책상 앞, 책상을 바라보게
-    expect(spots[0]).toMatchObject({ x: 2000, y: 2700 - 300 - 250, rotation: 0 });
+    expect(spots[0]).toMatchObject({
+      x: 2000,
+      y: 2700 - 300 - 250,
+      rotation: 0,
+      reasons: ["책상 앞"],
+    });
     for (let i = 0; i < spots.length; i++) {
       for (let j = i + 1; j < spots.length; j++) {
         const far = Math.hypot(spots[i].x - spots[j].x, spots[i].y - spots[j].y) >= 500;
@@ -71,5 +76,36 @@ describe("suggestSpots", () => {
     const extra = put("bed-queen", 800, 1050);
     const result = suggestSpots(d, [bed, extra], extra.id, { isNew: true });
     expect(result).toEqual({ spots: [], currentIsBest: false });
+  });
+
+  it("explains spots with the rules they satisfy", () => {
+    const window = {
+      id: "w",
+      roomId: "r",
+      edgeIndex: 1,
+      offset: 900,
+      width: 1200,
+      height: 1200,
+      sillHeight: 900,
+      kind: "window" as const,
+      swing: { side: "in" as const, hinge: "start" as const },
+    };
+    const d = { ...doc, floorplan: { rooms: [room], openings: [window] } };
+    const living = { ...room, points: rectPoints(0, 0, 4000, 4000) };
+    const ld = { ...doc, floorplan: { rooms: [living], openings: [] } };
+
+    const desk = put("desk", 1000, 2700, 180);
+    expect(suggestSpots(d, [desk], desk.id).spots[0].reasons).toContain("창가");
+
+    const tv = put("tv-stand", 2000, 200, 0);
+    const sofa = put("sofa-3", 600, 2500, 90);
+    expect(suggestSpots(ld, [tv, sofa], sofa.id, { isNew: true }).spots[0].reasons).toContain(
+      "TV 맞은편",
+    );
+
+    const plant = put("plant", 2000, 1500);
+    expect(suggestSpots(ld, [plant], plant.id, { isNew: true }).spots[0].reasons).toEqual([
+      "겹치거나 막는 것 없음",
+    ]);
   });
 });

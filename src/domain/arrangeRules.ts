@@ -165,19 +165,47 @@ export function needsLookahead(catalogId: string): boolean {
 
 /** 이 자리에 놓았을 때 규칙 비용 (0이 가장 좋음) */
 export function ruleCost(item: Pose, ctx: RuleContext): number {
+  return ruleTerms(item, ctx).cost;
+}
+
+/** 규칙을 잘 지켰다고 볼 비용 (이보다 작으면 이유로 보여 준다) */
+const GOOD = 60;
+
+const SEAT_LABELS: Record<string, string> = {
+  desk: "책상 앞",
+  "computer-desk": "책상 앞",
+  vanity: "화장대 앞",
+  table: "테이블 앞",
+  "dining-4": "식탁 자리",
+  "dining-6": "식탁 자리",
+  "table-round": "식탁 자리",
+};
+
+/** 규칙 비용과, 잘 지킨 규칙의 짧은 설명 (자리 추천에서 보여 준다) */
+export function ruleTerms(item: Pose, ctx: RuleContext): { cost: number; reasons: string[] } {
   const { placed } = ctx;
   const id = item.catalogId;
   let cost = 0;
+  const reasons: string[] = [];
+  const term = (c: number, reason: string) => {
+    cost += c;
+    if (c < GOOD) reasons.push(reason);
+  };
 
   // 소파 ↔ TV. 짝이 아직 안 놓였으면 짝이 갈 수 있는 자리 중 가장 좋은 곳을 가정한다
   if (SOFAS.has(id) || TVS.has(id)) {
     const partnerIds = SOFAS.has(id) ? TVS : SOFAS;
-    let partners = placed.filter((p) => partnerIds.has(p.catalogId));
-    if (!partners.length) partners = (ctx.pending ?? []).filter((p) => partnerIds.has(p.catalogId));
+    const real = placed.filter((p) => partnerIds.has(p.catalogId));
+    const partners = real.length
+      ? real
+      : (ctx.pending ?? []).filter((p) => partnerIds.has(p.catalogId));
     if (partners.length) {
-      cost += Math.min(
+      const c = Math.min(
         ...partners.map((p) => (SOFAS.has(id) ? sofaTvCost(item, p) : sofaTvCost(p, item))),
       );
+      // 아직 안 놓인 짝을 가정한 것은 이유로 보여 주지 않는다
+      if (real.length) term(c, SOFAS.has(id) ? "TV 맞은편" : "소파 맞은편");
+      else cost += c;
     }
   }
 
@@ -185,19 +213,32 @@ export function ruleCost(item: Pose, ctx: RuleContext): number {
   if (id === "coffee-table") {
     const spots = placed.filter((p) => SOFAS.has(p.catalogId)).map((s) => coffeeSpot(s, item));
     // 거실 테이블은 앞뒤가 없으므로 180° 돌아간 것도 같은 자리
-    if (spots.length)
-      cost += Math.min(
-        ...spots.flatMap((t) => [
-          offTarget(item, t),
-          offTarget(item, { ...t, rotation: t.rotation + 180 }),
-        ]),
+    if (spots.length) {
+      term(
+        Math.min(
+          ...spots.flatMap((t) => [
+            offTarget(item, t),
+            offTarget(item, { ...t, rotation: t.rotation + 180 }),
+          ]),
+        ),
+        "소파 앞",
       );
+    }
   }
 
   // 의자는 책상·식탁의 빈 자리
   if (CHAIRS.has(id)) {
-    const seats = freeSeats(item, placed);
-    if (seats.length) cost += Math.min(...seats.map((s) => offTarget(item, s)));
+    let bestSeat: { c: number; label: string } | null = null;
+    const chairs = placed.filter((p) => CHAIRS.has(p.catalogId));
+    for (const t of placed) {
+      for (const seat of seatsOf(t, item)) {
+        if (chairs.some((c) => distance(c, seat) < 250)) continue;
+        const c = offTarget(item, seat);
+        if (!bestSeat || c < bestSeat.c)
+          bestSeat = { c, label: SEAT_LABELS[t.catalogId] ?? "탁자 앞" };
+      }
+    }
+    if (bestSeat) term(bestSeat.c, bestSeat.label);
   }
 
   // 협탁은 침대 머리맡
@@ -205,22 +246,27 @@ export function ruleCost(item: Pose, ctx: RuleContext): number {
     const spots = placed
       .filter((p) => BEDS.has(p.catalogId))
       .flatMap((b) => nightstandSpots(b, item));
-    if (spots.length) cost += Math.min(...spots.map((s) => offTarget(item, s)));
+    if (spots.length) term(Math.min(...spots.map((s) => offTarget(item, s))), "침대 옆");
   }
 
   // 책상은 창가 (최대 3m 거리까지만 따진다)
   if (DESKS.has(id)) {
     const windows = windowCenters(ctx.room, ctx.openings);
-    if (windows.length) cost += Math.min(600, ...windows.map((w) => distance(item, w) / 5));
+    if (windows.length) {
+      const c = Math.min(600, ...windows.map((w) => distance(item, w) / 5));
+      // 창에서 1.5m 안이면 창가로 본다
+      cost += c;
+      if (c <= 300) reasons.push("창가");
+    }
   }
 
   // 침대는 문 정면을 피한다
   if (BEDS.has(id)) {
+    const lines = doorLines(ctx.room, ctx.openings);
     const parts = itemParts(item, "bed");
-    if (doorLines(ctx.room, ctx.openings).some((line) => partsOverlap(parts, [line], 10))) {
-      cost += 400;
-    }
+    if (lines.some((line) => partsOverlap(parts, [line], 10))) cost += 400;
+    else if (lines.length) reasons.push("문 정면을 피함");
   }
 
-  return cost;
+  return { cost, reasons };
 }
