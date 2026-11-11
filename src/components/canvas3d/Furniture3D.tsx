@@ -273,6 +273,61 @@ export function Furniture3D({ item, selected, onSelect }: Props) {
         />
       </>
     );
+  } else if (item.catalogId === "nightstand") {
+    // 협탁: 짧은 다리 위 몸통 + 살짝 튀어나온 상판 + 앞쪽 서랍 두 칸과 손잡이 (뒤가 -z, 앞이 +z)
+    const legH = Math.min(0.1, h * 0.18);
+    const top = Math.min(0.025, h * 0.06);
+    const bodyW = w - 0.02;
+    const bodyD = d - 0.02;
+    const bodyH = Math.max(h - top - legH, 0.01);
+    const gap = 0.012;
+    const drawerH = (bodyH - gap * 3) / 2;
+    const front = bodyD / 2;
+    body = (
+      <>
+        {/* 다리 */}
+        {[
+          [-1, -1],
+          [1, -1],
+          [1, 1],
+          [-1, 1],
+        ].map(([sx, sz], i) => (
+          <Box
+            key={i}
+            size={[0.03, legH, 0.03]}
+            position={[sx * (bodyW / 2 - 0.03), legH / 2, sz * (bodyD / 2 - 0.03)]}
+            color={dark}
+            edges={false}
+          />
+        ))}
+        {/* 몸통과 상판 */}
+        <Box
+          size={[bodyW, bodyH, bodyD]}
+          position={[0, legH + bodyH / 2, 0]}
+          color={color}
+          selected={s}
+        />
+        <Box size={[w, top, d]} position={[0, h - top / 2, 0]} color={dark} selected={s} />
+        {/* 서랍 두 칸 */}
+        {[0, 1].map((i) => {
+          const y = legH + gap + drawerH / 2 + i * (drawerH + gap);
+          return (
+            <group key={i} position={[0, y, front]}>
+              <Box
+                size={[bodyW - gap * 2, drawerH, 0.012]}
+                position={[0, 0, 0.006]}
+                color={shade(color, 0.05)}
+                selected={s}
+              />
+              <mesh position={[0, 0, 0.022]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+                <cylinderGeometry args={[0.012, 0.012, 0.02, 16]} />
+                <Mat color="#a8a29e" selected={s} />
+              </mesh>
+            </group>
+          );
+        })}
+      </>
+    );
   } else if (symbol === "bed") {
     const base = h * 0.5;
     const mattress = h - base;
