@@ -42,6 +42,7 @@ import { offsetForCenter } from "@/geometry/openings";
 import { formatArea, formatLength } from "@/lib/format";
 import {
   activeLayout,
+  activeSuggestion,
   findItem,
   findRoom,
   selectedRoomId,
@@ -53,6 +54,7 @@ import { COLORS, MAX_SCALE, MIN_RECT_SIZE, MIN_SCALE, SNAP_STEP } from "./consta
 import { FurnitureShape } from "./FurnitureShape";
 import { Grid } from "./Grid";
 import { OpeningShape } from "./OpeningShape";
+import { SuggestionOverlay } from "./SuggestionOverlay";
 import { WarningOverlay } from "./WarningOverlay";
 import { useWarnings } from "@/components/editor/useWarnings";
 
@@ -105,6 +107,7 @@ export default function FloorplanCanvas() {
   const selection = useEditorStore((s) => s.selection);
   const hoveredEdge = useEditorStore((s) => s.hoveredEdge);
   const fitRequest = useEditorStore((s) => s.fitRequest);
+  const suggestion = useEditorStore(activeSuggestion);
 
   const { rooms, openings } = doc.floorplan;
   const { items } = activeLayout(doc);
@@ -703,6 +706,25 @@ export default function FloorplanCanvas() {
                   scale={scale}
                 />
               )}
+              {/* 자리 추천 후보 */}
+              {!structureMode &&
+                suggestion &&
+                (() => {
+                  const target = items.find((i) => i.id === suggestion.itemId);
+                  if (!target || !suggestion.spots.length) return null;
+                  const st = useEditorStore.getState;
+                  return (
+                    <SuggestionOverlay
+                      item={target}
+                      spots={suggestion.spots}
+                      hovered={suggestion.hovered}
+                      scale={scale}
+                      onPick={(i) => st().applySuggestion(i)}
+                      onHover={(i) => st().hoverSuggestion(i)}
+                      onCursor={(c) => setHoverCursor(c ?? "default")}
+                    />
+                  );
+                })()}
               {/* 스냅 안내선 */}
               {guides?.x !== undefined && (
                 <Line
