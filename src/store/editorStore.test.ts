@@ -179,6 +179,32 @@ describe("layouts", () => {
     expect(s().doc.layouts).toHaveLength(1);
   });
 
+  it("auto-arranges into a new layout and leaves the source untouched", () => {
+    const s = () => store.getState();
+    s().addRoom("방", rectPoints(0, 0, 4000, 3000));
+    const bed = s().addFurniture("bed-queen", { x: 2000, y: 1500 })!;
+    s().addFurniture("drawer", { x: 2000, y: 1500 });
+    const before = structuredClone(s().doc.layouts[0].items);
+
+    const { layoutId, unplaced } = s().autoArrangeLayout();
+    expect(unplaced).toEqual([]);
+    expect(s().doc.layouts.map((l) => l.name)).toEqual(["현재 배치", "자동 배치 1"]);
+    expect(s().doc.editingLayoutId).toBe(layoutId);
+    expect(s().doc.layouts[0].items).toEqual(before);
+    // 같은 가구 id를 이어 써서 비교할 수 있다
+    expect(activeLayout(s().doc).items.map((i) => i.id)).toContain(bed);
+    expect(activeLayout(s().doc).items).not.toEqual(before);
+
+    // 자동 배치한 배치안에서 다시 돌리면 이름이 겹치지 않는다
+    s().autoArrangeLayout();
+    expect(s().doc.layouts.at(-1)!.name).toBe("자동 배치 2");
+
+    // 한 번의 실행 취소로 되돌린다
+    s().undo();
+    s().undo();
+    expect(s().doc.layouts).toHaveLength(1);
+  });
+
   it("rotates the whole house 90° with furniture in every layout", () => {
     const s = store.getState;
     const roomId = s().addRoom("방", rectPoints(0, 0, 4000, 2000));

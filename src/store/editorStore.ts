@@ -15,6 +15,7 @@ import {
   type Room,
   type Vec2,
 } from "@/domain/document";
+import { autoArrange, type ArrangeOptions } from "@/domain/autoArrange";
 import { nextLayoutName } from "@/domain/layoutDiff";
 import { normalizeAngle } from "@/geometry/furniture";
 import {
@@ -147,6 +148,8 @@ export type EditorState = {
   switchLayout: (layoutId: string) => void;
   /** fromId 배치안을 복제해 새 배치안을 만들고 그쪽으로 전환 (가구 id는 그대로 이어짐) */
   addLayout: (fromId?: string) => string;
+  /** 보고 있는 배치안을 자동 배치해서 새 배치안으로 만들고 그 배치안으로 바꾼다 */
+  autoArrangeLayout: (options?: ArrangeOptions) => { layoutId: string; unplaced: string[] };
   renameLayout: (layoutId: string, name: string) => void;
   deleteLayout: (layoutId: string) => void;
   /** 실제 지금 집의 배치로 지정 */
@@ -525,6 +528,26 @@ export const useEditorStore = create<EditorState>()(
         });
         set({ selection: null });
         return layout.id;
+      },
+      autoArrangeLayout: (options) => {
+        const { doc } = get();
+        const source = activeLayout(doc);
+        const result = autoArrange(doc, source.items, options);
+        const used = new Set(doc.layouts.map((l) => l.name));
+        let n = 1;
+        while (used.has(`자동 배치 ${n}`)) n++;
+        const layout: Layout = {
+          id: newId(),
+          name: `자동 배치 ${n}`,
+          isCurrent: false,
+          items: result.items,
+        };
+        get().apply((d) => {
+          d.layouts.push(layout);
+          d.editingLayoutId = layout.id;
+        });
+        set({ selection: null });
+        return { layoutId: layout.id, unplaced: result.unplaced };
       },
       renameLayout: (layoutId, name) => {
         get().apply((d) => {

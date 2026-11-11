@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Layout } from "@/domain/document";
 import { activeLayout, useEditorStore } from "@/store/editorStore";
+import { AutoArrangeButton } from "./AutoArrangeDialog";
 
-/** 편집기 위쪽 배치안 탭: 전환, 새 배치안, 이름 바꾸기, 현재 배치 지정, 삭제, 비교 */
+/** 편집기 위쪽 배치안 탭: 전환, 새 배치안, 이름 바꾸기, 현재 배치 지정, 삭제, 자동 배치, 비교 */
 export function LayoutTabs() {
   const layouts = useEditorStore((s) => s.doc.layouts);
   const activeId = useEditorStore((s) => activeLayout(s.doc).id);
@@ -53,6 +54,7 @@ export function LayoutTabs() {
         ＋ 새 배치안
       </button>
       <span className="flex-1" />
+      {view !== "compare" && <AutoArrangeButton />}
       <button
         type="button"
         disabled={layouts.length < 2}

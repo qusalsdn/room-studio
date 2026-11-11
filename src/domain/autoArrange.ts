@@ -68,7 +68,8 @@ function partsOf(item: FurnitureItem): Convex[] {
   return itemParts(item, findCatalogItem(item.catalogId)?.symbol ?? "plain");
 }
 
-function roomOf(item: FurnitureItem, rooms: Room[]): Room | undefined {
+/** 가구가 속한 방 (방 밖이면 가장 가까운 방) */
+export function roomOf(item: FurnitureItem, rooms: Room[]): Room | undefined {
   const inside = rooms.find((r) => pointInPolygon(item, r.points));
   if (inside) return inside;
   let best: Room | undefined;
