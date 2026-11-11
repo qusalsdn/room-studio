@@ -1,4 +1,9 @@
-import { findCatalogItem, type CatalogItem } from "@/catalog/furniture";
+import {
+  findCatalogItem,
+  placementOf as catalogPlacement,
+  type Placement,
+} from "@/catalog/furniture";
+import { needsLookahead, ruleCost, ruleTargets } from "@/domain/arrangeRules";
 import type { FurnitureItem, HouseDocument, Room } from "@/domain/document";
 import { checkLayout, countBySeverity } from "@/domain/warnings";
 import { partsInsidePolygon, partsOverlap, type Convex } from "@/geometry/collision";
@@ -22,11 +27,11 @@ import {
  * - 반드시: 겹침·벽에 걸침·문 막힘 오류를 새로 만들지 않는다.
  * - 되도록: 여유공간·통로 경고를 줄이고, 원래 자리·방향에서 덜 옮긴다.
  * - 벽에 붙이는 가구(침대·소파·수납·가전 등)는 등을 벽에 대고 놓는다.
+ * - 배치 규칙(arrangeRules): 소파↔TV, 소파 앞 거실 테이블, 책상·식탁 의자, 침대 옆 협탁,
+ *   창가 책상, 문 정면을 피하는 침대.
  * 큰 가구부터 하나씩, 놓을 수 있는 자리 중 가장 좋은 곳을 고르는 탐욕적 배치다.
  * 같은 입력이면 항상 같은 결과가 나온다.
  */
-
-export type Placement = "wall" | "free" | "keep";
 
 export type ArrangeOptions = {
   /** 옮기지 않을 가구 */
@@ -53,22 +58,10 @@ const ROTATE_COST = 50;
 /** 가구 하나당 경고 검사를 돌려 볼 후보 수 상한 */
 const MAX_EVALS = 400;
 
-const WALL_CATEGORIES = new Set<CatalogItem["category"]>([
-  "bed",
-  "sofa",
-  "storage",
-  "kitchen",
-  "appliance",
-]);
-const WALL_IDS = new Set(["desk", "vanity", "nightstand"]);
-const FREE_IDS = new Set(["massage-chair"]);
-
+/** 자동 배치 방식. 바닥에 까는 얇은 가구는 옮기지 않는다 */
 export function placementOf(item: FurnitureItem): Placement {
-  const c = findCatalogItem(item.catalogId);
-  if (c?.symbol === "rug" || item.height <= 20) return "keep";
-  if (!c || FREE_IDS.has(c.id)) return "free";
-  if (WALL_CATEGORIES.has(c.category) || WALL_IDS.has(c.id)) return "wall";
-  return "free";
+  if (item.height <= 20) return "keep";
+  return catalogPlacement(item.catalogId);
 }
 
 function partsOf(item: FurnitureItem): Convex[] {
@@ -133,6 +126,13 @@ function freeCandidates(room: Room): Candidate[] {
   return out;
 }
 
+/** 벽 가구는 벽에 붙은 자리만, 나머지는 지금 자리 + 방 안 격자 */
+function baseCandidates(item: FurnitureItem, room: Room): Candidate[] {
+  return placementOf(item) === "wall"
+    ? wallCandidates(item, room)
+    : [{ x: item.x, y: item.y, rotation: item.rotation }, ...freeCandidates(room)];
+}
+
 function rotationDiff(a: number, b: number): number {
   const d = Math.abs(normalizeAngle(a) - normalizeAngle(b));
   return Math.min(d, 360 - d);
@@ -162,8 +162,12 @@ export function autoArrange(
       return pa - pb || area(b) - area(a) || a.id.localeCompare(b.id);
     });
 
-    for (const item of order) {
-      const best = placeOne(doc, room, item, placed);
+    for (const [k, item] of order.entries()) {
+      const pending = order
+        .slice(k + 1)
+        .filter((i) => needsLookahead(i.catalogId))
+        .flatMap((i) => baseCandidates(i, room).map((c) => ({ ...i, ...c })));
+      const best = placeOne(doc, room, item, placed, pending);
       if (best) {
         const next = { ...item, ...best };
         placed.push(next);
@@ -184,14 +188,15 @@ function placeOne(
   room: Room,
   item: FurnitureItem,
   placed: FurnitureItem[],
+  pending: FurnitureItem[],
 ): Candidate | null {
-  // 벽 가구는 벽에 붙은 자리만, 나머지는 지금 자리 + 방 안 격자
-  const raw =
-    placementOf(item) === "wall"
-      ? wallCandidates(item, room)
-      : [{ x: item.x, y: item.y, rotation: item.rotation }, ...freeCandidates(room)];
+  const raw = [...baseCandidates(item, room), ...ruleTargets(item, placed)];
+  const ctx = { room, openings: doc.floorplan.openings, placed, pending };
+  // 이동 비용 + 규칙 비용은 경고 검사 없이 싸게 구할 수 있어서, 이것으로 정렬해 가지치기한다
   const lowerBound = (c: Candidate) =>
-    distance(c, item) / 10 + (rotationDiff(c.rotation, item.rotation) ? ROTATE_COST : 0);
+    distance(c, item) / 10 +
+    (rotationDiff(c.rotation, item.rotation) ? ROTATE_COST : 0) +
+    ruleCost({ ...item, ...c }, ctx);
   const candidates = raw.map((c) => ({ c, lb: lowerBound(c) })).sort((a, b) => a.lb - b.lb);
 
   const solids = placed.filter((p) => placementOf(p) !== "keep");

@@ -3,15 +3,7 @@
  * 가구의 "앞"은 회전 0일 때 화면 아래쪽(+y)이고, 등받이·머리판은 위쪽(-y)에 있다.
  */
 export type FurnitureCategory =
-  | "bed"
-  | "sofa"
-  | "table"
-  | "chair"
-  | "storage"
-  | "kitchen"
-  | "appliance"
-  | "hobby"
-  | "etc";
+  "bed" | "sofa" | "table" | "chair" | "storage" | "kitchen" | "appliance" | "hobby" | "etc";
 
 export type FurnitureSymbol = "bed" | "sofa" | "round" | "rug" | "hanger" | "l-shape" | "plain";
 
@@ -28,7 +20,20 @@ export type CatalogItem = {
   hidden?: boolean;
   /** 쓰려면 비워 둬야 하는 공간 (mm). 앞은 회전 0일 때 +y 쪽 */
   clearance?: Clearance;
+  /** 자동 배치에서 등을 벽에 대는지 (없으면 분류별 기본값, placementOf 참고) */
+  placement?: Placement;
 };
+
+/** wall: 등(-y)을 벽에 댄다 / free: 방 안 어디든 / keep: 자동 배치에서 옮기지 않는다 */
+export type Placement = "wall" | "free" | "keep";
+
+const WALL_CATEGORIES = new Set<FurnitureCategory>([
+  "bed",
+  "sofa",
+  "storage",
+  "kitchen",
+  "appliance",
+]);
 
 export type Clearance = {
   front?: number;
@@ -210,6 +215,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 730,
     color: wood,
     symbol: "plain",
+    placement: "wall",
     clearance: { front: 700 },
   },
 
@@ -373,6 +379,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 10,
     color: "#d6c3b4",
     symbol: "rug",
+    placement: "keep",
   },
   {
     id: "crib",
@@ -404,6 +411,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 550,
     color: wood,
     symbol: "plain",
+    placement: "wall",
   },
   {
     id: "vanity",
@@ -414,6 +422,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 750,
     color: wood,
     symbol: "plain",
+    placement: "wall",
     clearance: { front: 600 },
   },
   {
@@ -435,6 +444,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 730,
     color: wood,
     symbol: "plain",
+    placement: "wall",
     clearance: { front: 700 },
   },
   {
@@ -446,6 +456,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 730,
     color: wood,
     symbol: "l-shape",
+    placement: "wall",
   },
   {
     id: "living-cabinet",
@@ -531,6 +542,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 700,
     color: white,
     symbol: "plain",
+    placement: "free",
   },
   {
     id: "dehumidifier",
@@ -541,6 +553,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 650,
     color: white,
     symbol: "plain",
+    placement: "free",
   },
   {
     id: "treadmill",
@@ -571,6 +584,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 1250,
     color: "#3f3f46",
     symbol: "plain",
+    placement: "wall",
     clearance: { front: 700 },
   },
   {
@@ -582,6 +596,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 850,
     color: "#3f3f46",
     symbol: "plain",
+    placement: "wall",
     clearance: { front: 700 },
   },
   {
@@ -593,6 +608,7 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 1700,
     color: white,
     symbol: "plain",
+    placement: "wall",
   },
   {
     id: "drying-rack",
@@ -622,6 +638,13 @@ export const FURNITURE_DRAG_TYPE = "application/x-room-studio-furniture";
 
 export function findCatalogItem(id: string): CatalogItem | undefined {
   return FURNITURE_CATALOG.find((c) => c.id === id);
+}
+
+/** 자동 배치 방식. 직접 만든 가구·모르는 가구는 free */
+export function placementOf(catalogId: string): Placement {
+  const c = findCatalogItem(catalogId);
+  if (!c) return "free";
+  return c.placement ?? (WALL_CATEGORIES.has(c.category) ? "wall" : "free");
 }
 
 export function symbolOf(catalogId: string): FurnitureSymbol {

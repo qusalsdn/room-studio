@@ -135,6 +135,21 @@ describe("door approach and duplicate warnings", () => {
     expect(w.filter((x) => x.kind === "clearance")).toHaveLength(1);
     expect(w.filter((x) => x.kind === "passage")).toHaveLength(0);
   });
+
+  it("lets a chair sit in a desk's clearance but not a wardrobe's", () => {
+    // 책상(가로 120·깊이 60) 앞에 의자를 붙여 놓음
+    expect(kinds([put("desk", 2000, 300), put("chair", 2000, 850, 180)])).toEqual([]);
+    expect(kinds([put("wardrobe", 2000, 300), put("chair", 2000, 1100, 180)])).toContain(
+      "clearance",
+    );
+  });
+
+  it("lets nightstands flank a bed without blocking its sides", () => {
+    // 퀸 침대(가로 150) 머리맡 양옆에 협탁
+    const bed = put("bed-queen", 2000, 1050);
+    const sides = [-1, 1].map((k) => put("nightstand", 2000 + k * 975, 200));
+    expect(kinds([bed, ...sides])).toEqual([]);
+  });
 });
 
 describe("demo house", () => {

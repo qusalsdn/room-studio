@@ -48,6 +48,11 @@ type Body = {
   room: Room | undefined;
 };
 
+/** 탁자에 붙여 앉는 의자 (안마의자는 아님) */
+const isSeat = (item: FurnitureItem) =>
+  item.catalogId === "chair" || item.catalogId === "office-chair";
+const isNightstand = (item: FurnitureItem) => item.catalogId === "nightstand";
+
 const cm = (mm: number) => `${Math.round(mm / 10)}cm`;
 
 function bodiesOf(items: FurnitureItem[], rooms: Room[]): Body[] {
@@ -158,11 +163,16 @@ export function checkLayout(
 
   // 4. 가구를 쓰는 데 필요한 여유공간
   for (const b of placed) {
-    const spec = findCatalogItem(b.item.catalogId)?.clearance;
+    const catalog = findCatalogItem(b.item.catalogId);
+    const spec = catalog?.clearance;
     const zones = clearanceZones(b.item, spec);
+    // 책상·식탁 앞은 의자가, 침대 옆은 협탁이 쓰는 자리라서 막는 것으로 보지 않는다
+    const companion =
+      catalog?.category === "table" ? isSeat : catalog?.category === "bed" ? isNightstand : null;
     const blockedBy = (polygon: Vec2[]) => {
       const other = tall.find(
-        (o) => o.item.id !== b.item.id && partsOverlap(o.parts, [polygon], 10),
+        (o) =>
+          o.item.id !== b.item.id && !companion?.(o.item) && partsOverlap(o.parts, [polygon], 10),
       );
       if (other) {
         reported.add(`${b.item.id}:${other.item.id}`);
