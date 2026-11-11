@@ -1,4 +1,4 @@
-import { findCatalogItem } from "@/catalog/furniture";
+import { findCatalogItem, itemClearance } from "@/catalog/furniture";
 import type { FurnitureItem, HouseDocument, Room, Vec2 } from "@/domain/document";
 import {
   partsInsidePolygon,
@@ -164,7 +164,7 @@ export function checkLayout(
   // 4. 가구를 쓰는 데 필요한 여유공간
   for (const b of placed) {
     const catalog = findCatalogItem(b.item.catalogId);
-    const spec = catalog?.clearance;
+    const spec = itemClearance(b.item);
     const zones = clearanceZones(b.item, spec);
     // 책상·식탁 앞은 의자가, 침대 옆은 협탁이 쓰는 자리라서 막는 것으로 보지 않는다
     const companion =

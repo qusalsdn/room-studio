@@ -1,9 +1,10 @@
 "use client";
 
-import { FURNITURE_COLORS } from "@/catalog/furniture";
+import { defaultDoorSpace, FURNITURE_COLORS } from "@/catalog/furniture";
 import type { FurnitureItem, Opening, Room } from "@/domain/document";
 import { MIN_OPENING_WIDTH, OPENING_LABELS } from "@/geometry/openings";
 import { edgeLength } from "@/geometry/polygon";
+import { formatLength } from "@/lib/format";
 import { activeLayout, useEditorStore } from "@/store/editorStore";
 import { Button, LengthField, Section, Segmented, TextField } from "./fields";
 import { ReplaceSection } from "./ReplaceSection";
@@ -16,6 +17,7 @@ export function FurnitureInspector({ item }: { item: FurnitureItem }) {
   const unit = useEditorStore((s) => s.doc.settings.displayUnit);
   const s = useEditorStore.getState;
   const update = (patch: Partial<FurnitureItem>) => s().updateFurniture(item.id, patch);
+  const doorDefault = defaultDoorSpace(item.catalogId);
 
   return (
     <>
@@ -70,6 +72,29 @@ export function FurnitureInspector({ item }: { item: FurnitureItem }) {
           </label>
         </div>
       </Section>
+
+      {doorDefault !== undefined && (
+        <Section title="문 여닫이">
+          <label className={fieldLabel}>
+            문·서랍을 열 앞 공간
+            <LengthField
+              valueMm={item.doorSpace ?? doorDefault}
+              unit={unit}
+              min={0}
+              ariaLabel="문 여는 앞 공간"
+              onCommit={(doorSpace) => update({ doorSpace })}
+            />
+          </label>
+          <p className="text-xs text-neutral-500">
+            여닫이문 폭만큼 잡아 주세요. 미닫이라 필요 없으면 0으로 두면 돼요.
+          </p>
+          {item.doorSpace !== undefined && item.doorSpace !== doorDefault && (
+            <Button variant="ghost" onClick={() => update({ doorSpace: undefined })}>
+              기본값({formatLength(doorDefault, unit)})으로
+            </Button>
+          )}
+        </Section>
+      )}
 
       <Section title="회전">
         <div className="flex items-center gap-2">

@@ -661,3 +661,23 @@ export function placementOf(catalogId: string): Placement {
 export function symbolOf(catalogId: string): FurnitureSymbol {
   return findCatalogItem(catalogId)?.symbol ?? "plain";
 }
+
+/** 앞에 문·서랍이 달려 여는 공간을 조절할 수 있는 분류 */
+const DOOR_CATEGORIES = new Set<FurnitureCategory>(["storage", "kitchen", "appliance"]);
+
+/** 문·서랍 여는 공간 기본값 (mm). 문이 없는 가구는 undefined */
+export function defaultDoorSpace(catalogId: string): number | undefined {
+  const c = findCatalogItem(catalogId);
+  if (!c || !DOOR_CATEGORIES.has(c.category)) return undefined;
+  return c.clearance?.front;
+}
+
+/** 배치된 가구에 실제로 적용할 여유공간: 카탈로그 값에 가구별 문 여는 공간을 덮어쓴다 */
+export function itemClearance(item: {
+  catalogId: string;
+  doorSpace?: number;
+}): Clearance | undefined {
+  const base = findCatalogItem(item.catalogId)?.clearance;
+  if (item.doorSpace === undefined || defaultDoorSpace(item.catalogId) === undefined) return base;
+  return { ...base, front: item.doorSpace };
+}

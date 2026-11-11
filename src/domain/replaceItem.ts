@@ -111,6 +111,8 @@ export function replaceItem(
   if (!old) return null;
   const at = anchoredPlacement(doc, items, old, spec);
   const item: FurnitureItem = { ...old, ...spec, ...at };
+  // 다른 가구로 바뀌면 문 여는 공간도 새 가구의 기본값을 따른다
+  if (spec.catalogId !== old.catalogId) delete item.doorSpace;
 
   const others = items.filter((i) => i.id !== itemId);
   const mine = (list: FurnitureItem[]) =>

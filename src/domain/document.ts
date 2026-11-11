@@ -43,6 +43,8 @@ const furnitureItemSchema = z.object({
   depth: z.number(),
   height: z.number(),
   color: z.string(),
+  /** 문·서랍을 여는 데 필요한 앞 공간 (mm). 없으면 카탈로그 기본값, 0이면 미닫이처럼 필요 없음 */
+  doorSpace: z.number().nonnegative().optional(),
 });
 
 const layoutSchema = z.object({

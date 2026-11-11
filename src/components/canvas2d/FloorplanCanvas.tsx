@@ -27,8 +27,14 @@ import {
   removeDuplicatePoints,
   splitEdge,
 } from "@/geometry/roomEdit";
-import { FURNITURE_DRAG_TYPE, symbolOf } from "@/catalog/furniture";
 import {
+  defaultDoorSpace,
+  FURNITURE_DRAG_TYPE,
+  itemClearance,
+  symbolOf,
+} from "@/catalog/furniture";
+import {
+  clearanceZones,
   collectSnapLines,
   itemLabelPoint,
   normalizeAngle,
@@ -660,6 +666,27 @@ export default function FloorplanCanvas() {
                   />
                 );
               })}
+              {/* 선택한 가구의 문 여는 공간 */}
+              {!structureMode &&
+                (() => {
+                  const sel = items.find((i) => i.id === selectedItemId);
+                  if (!sel || defaultDoorSpace(sel.catalogId) === undefined) return null;
+                  const front = clearanceZones(sel, itemClearance(sel)).find(
+                    (z) => z.side === "front",
+                  );
+                  if (!front) return null;
+                  return (
+                    <Line
+                      points={front.polygon.flatMap((p) => [p.x, p.y])}
+                      closed
+                      listening={false}
+                      fill="rgba(37,99,235,0.08)"
+                      stroke="#2563eb"
+                      strokeWidth={1 / scale}
+                      dash={[4 / scale, 3 / scale]}
+                    />
+                  );
+                })()}
               {/* 가구 */}
               {items.map((item) => (
                 <FurnitureShape

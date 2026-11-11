@@ -79,6 +79,16 @@ describe("checkLayout", () => {
     // 옷장 앞(아래쪽) 60cm 안에 벽: 옷장 중심 y=2400, 깊이 60 → 앞면 2700, 벽 3000 → 30cm
     const w = checkLayout(doc(), [put("wardrobe", 2000, 2400)]);
     expect(w.map((x) => x.message)).toContain("옷장 앞 60cm이 벽에 막혀요");
+    // 장롱도 문을 열 앞 공간이 있어야 한다
+    const j = checkLayout(doc(), [put("jangnong", 2000, 2400)]);
+    expect(j.map((x) => x.message)).toContain("장롱 앞 60cm이 벽에 막혀요");
+    // 가구마다 문 여는 공간을 바꿀 수 있다: 0이면 미닫이처럼 앞이 막혀도 괜찮다
+    const sliding = { ...put("jangnong", 2000, 2400), doorSpace: 0 };
+    expect(kinds([sliding])).not.toContain("clearance");
+    const wide = { ...put("wardrobe", 2000, 2000), doorSpace: 900 };
+    expect(checkLayout(doc(), [wide]).map((x) => x.message)).toContain(
+      "옷장 앞 90cm이 벽에 막혀요",
+    );
 
     // 소파 앞의 낮은 거실 테이블은 막는 것으로 보지 않는다
     expect(kinds([put("sofa-3", 2000, 2550, 180), put("coffee-table", 2000, 1700)])).toEqual([]);
