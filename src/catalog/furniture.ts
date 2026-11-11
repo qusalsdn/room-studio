@@ -3,7 +3,15 @@
  * 가구의 "앞"은 회전 0일 때 화면 아래쪽(+y)이고, 등받이·머리판은 위쪽(-y)에 있다.
  */
 export type FurnitureCategory =
-  "bed" | "sofa" | "table" | "chair" | "storage" | "appliance" | "hobby" | "etc";
+  | "bed"
+  | "sofa"
+  | "table"
+  | "chair"
+  | "storage"
+  | "kitchen"
+  | "appliance"
+  | "hobby"
+  | "etc";
 
 export type FurnitureSymbol = "bed" | "sofa" | "round" | "rug" | "hanger" | "l-shape" | "plain";
 
@@ -36,6 +44,7 @@ export const CATEGORY_LABELS: Record<FurnitureCategory, string> = {
   table: "테이블·책상",
   chair: "의자",
   storage: "수납",
+  kitchen: "주방",
   appliance: "가전",
   hobby: "운동·취미",
   etc: "기타",
@@ -172,6 +181,17 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     clearance: { front: 600, back: 600, side: 600, sideMode: "both" },
   },
   {
+    id: "table",
+    name: "탁자",
+    category: "table",
+    width: 800,
+    depth: 600,
+    height: 720,
+    color: wood,
+    symbol: "plain",
+    clearance: { front: 600 },
+  },
+  {
     id: "coffee-table",
     name: "거실 테이블",
     category: "table",
@@ -277,6 +297,18 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     height: 450,
     color: wood,
     symbol: "plain",
+  },
+
+  {
+    id: "sink",
+    name: "싱크대",
+    category: "kitchen",
+    width: 1800,
+    depth: 600,
+    height: 850,
+    color: white,
+    symbol: "plain",
+    clearance: { front: 900 },
   },
 
   {

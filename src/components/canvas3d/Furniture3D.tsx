@@ -15,6 +15,7 @@ const EDGE = "#78716c";
 const TABLE_LIKE = new Set([
   "dining-4",
   "dining-6",
+  "table",
   "coffee-table",
   "desk",
   "computer-desk",
