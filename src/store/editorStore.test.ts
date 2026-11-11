@@ -3,7 +3,7 @@ import { ROOM_PRESETS } from "@/catalog/roomPresets";
 import { autoArrange } from "@/domain/autoArrange";
 import { createEmptyDocument } from "@/domain/document";
 import { rectPoints } from "@/geometry/roomEdit";
-import { activeLayout, useEditorStore } from "@/store/editorStore";
+import { activeLayout, activeSuggestion, findItem, useEditorStore } from "@/store/editorStore";
 
 const store = useEditorStore;
 
@@ -206,6 +206,37 @@ describe("layouts", () => {
     s().undo();
     s().undo();
     expect(s().doc.layouts).toHaveLength(1);
+  });
+
+  it("suggests spots for one item, applies one, and drops stale suggestions", () => {
+    const s = () => store.getState();
+    s().addRoom("방", rectPoints(0, 0, 4000, 3000));
+    s().addFurniture("wardrobe", { x: 2000, y: 300 });
+    const drawer = s().addFurniture("drawer", { x: 2000, y: 400 })!;
+
+    s().suggestFor(drawer);
+    const sug = activeSuggestion(s())!;
+    expect(sug.spots.length).toBeGreaterThan(0);
+
+    // 다른 가구를 고르면 보이지 않는다
+    s().select(null);
+    expect(activeSuggestion(s())).toBeNull();
+    s().select({ kind: "furniture", itemId: drawer });
+    expect(activeSuggestion(s())).not.toBeNull();
+
+    const spot = sug.spots[0];
+    s().applySuggestion(0);
+    expect(findItem(s().doc, drawer)).toMatchObject({ x: spot.x, y: spot.y });
+    expect(s().suggestion).toBeNull();
+
+    // 문서가 바뀌면 낡은 추천은 보이지 않는다
+    s().suggestFor(drawer);
+    s().updateFurniture(drawer, { x: findItem(s().doc, drawer)!.x + 300 });
+    expect(activeSuggestion(s())).toBeNull();
+
+    s().undo();
+    s().undo();
+    expect(findItem(s().doc, drawer)).toMatchObject({ x: 2000, y: 400 });
   });
 
   it("rotates the whole house 90° with furniture in every layout", () => {

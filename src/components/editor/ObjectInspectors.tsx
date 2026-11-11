@@ -6,6 +6,7 @@ import { MIN_OPENING_WIDTH, OPENING_LABELS } from "@/geometry/openings";
 import { edgeLength } from "@/geometry/polygon";
 import { activeLayout, useEditorStore } from "@/store/editorStore";
 import { Button, LengthField, Section, Segmented, TextField } from "./fields";
+import { SuggestionSection } from "./SuggestionSection";
 import { WarningsSection } from "./WarningsSection";
 
 const fieldLabel = "flex flex-col gap-1 text-xs text-neutral-600";
@@ -29,6 +30,8 @@ export function FurnitureInspector({ item }: { item: FurnitureItem }) {
       </Section>
 
       <WarningsSection itemId={item.id} />
+
+      <SuggestionSection itemId={item.id} />
 
       <Section title="치수 (실측값으로 바꿔 주세요)">
         <div className="grid grid-cols-2 gap-2">

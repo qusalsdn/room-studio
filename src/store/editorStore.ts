@@ -16,6 +16,7 @@ import {
   type Vec2,
 } from "@/domain/document";
 import { nextLayoutName } from "@/domain/layoutDiff";
+import { suggestSpots, type Suggestion } from "@/domain/suggestSpots";
 import { normalizeAngle } from "@/geometry/furniture";
 import {
   MIN_OPENING_WIDTH,
@@ -73,6 +74,19 @@ export type ItemPosition = { id: string; x: number; y: number };
 
 export type Viewport = { scale: number; x: number; y: number };
 
+export type SuggestionState = {
+  itemId: string;
+  /** 방금 놓은 가구 (옮기는 거리를 거의 따지지 않은 추천) */
+  isNew: boolean;
+  spots: Suggestion[];
+  /** 지금 자리보다 나은 곳이 없음 */
+  currentIsBest: boolean;
+  /** 이 문서로 계산했다. 문서가 바뀌면(옮김·실행 취소·배치안 전환) 낡은 추천이 된다 */
+  forDoc: HouseDocument;
+  /** 목록·도면에서 마우스를 올린 후보 */
+  hovered: number | null;
+};
+
 export type EditorState = {
   /** 클라우드 프로젝트 id. null이면 브라우저에 저장되는 게스트 문서 */
   projectId: string | null;
@@ -97,6 +111,8 @@ export type EditorState = {
   viewport: Viewport;
   /** 캔버스가 화면 맞춤을 다시 해야 할 때 증가 */
   fitRequest: number;
+  /** 가구 하나의 자리 추천 결과 (문서가 바뀌면 activeSuggestion이 더는 돌려주지 않는다) */
+  suggestion: SuggestionState | null;
 
   /** 클라우드 프로젝트 문서를 연다 (실행 취소 기록 초기화) */
   loadProject: (projectId: string, doc: HouseDocument) => void;
@@ -165,6 +181,12 @@ export type EditorState = {
   setHoveredEdge: (edge: EditorState["hoveredEdge"]) => void;
   setViewport: (viewport: Viewport) => void;
   requestFit: () => void;
+
+  // 자리 추천
+  suggestFor: (itemId: string, isNew?: boolean) => void;
+  applySuggestion: (index: number) => void;
+  hoverSuggestion: (index: number | null) => void;
+  clearSuggestion: () => void;
 };
 
 export function findRoom(doc: HouseDocument, roomId: string): Room | undefined {
@@ -181,6 +203,16 @@ export function currentLayout<T extends WithLayouts>(doc: T): T["layouts"][numbe
 /** 편집기에서 지금 고치고 있는 배치안 */
 export function activeLayout<T extends WithLayouts>(doc: T): T["layouts"][number] {
   return doc.layouts.find((l) => l.id === doc.editingLayoutId) ?? currentLayout(doc);
+}
+
+/** 지금 보여 줄 자리 추천: 계산한 뒤 문서가 그대로이고 그 가구가 선택돼 있을 때만 */
+export function activeSuggestion(
+  s: Pick<EditorState, "suggestion" | "doc" | "selection">,
+): SuggestionState | null {
+  const sug = s.suggestion;
+  if (!sug || sug.forDoc !== s.doc) return null;
+  if (s.selection?.kind !== "furniture" || s.selection.itemId !== sug.itemId) return null;
+  return sug;
 }
 
 export function findItem(doc: HouseDocument, itemId: string): FurnitureItem | undefined {
@@ -214,6 +246,7 @@ export const useEditorStore = create<EditorState>()(
       hoveredEdge: null,
       viewport: { scale: 0.1, x: 80, y: 80 },
       fitRequest: 0,
+      suggestion: null,
 
       loadProject: (projectId, doc) => {
         set({
@@ -585,6 +618,24 @@ export const useEditorStore = create<EditorState>()(
       setHoveredEdge: (hoveredEdge) => set({ hoveredEdge }),
       setViewport: (viewport) => set({ viewport }),
       requestFit: () => set({ fitRequest: get().fitRequest + 1 }),
+
+      suggestFor: (itemId, isNew = false) => {
+        const { doc } = get();
+        const result = suggestSpots(doc, activeLayout(doc).items, itemId, { isNew });
+        set({ suggestion: { itemId, isNew, ...result, forDoc: doc, hovered: null } });
+      },
+      applySuggestion: (index) => {
+        const sug = activeSuggestion(get());
+        const spot = sug?.spots[index];
+        if (!sug || !spot) return;
+        get().updateFurniture(sug.itemId, { x: spot.x, y: spot.y, rotation: spot.rotation });
+        set({ suggestion: null });
+      },
+      hoverSuggestion: (hovered) => {
+        const sug = get().suggestion;
+        if (sug && sug.hovered !== hovered) set({ suggestion: { ...sug, hovered } });
+      },
+      clearSuggestion: () => set({ suggestion: null }),
     }),
     {
       name: GUEST_STORAGE_KEY,

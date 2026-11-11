@@ -3,7 +3,13 @@
 import { useEffect } from "react";
 import { pointInPolygon } from "@/geometry/polygon";
 import { removeVertex } from "@/geometry/roomEdit";
-import { activeLayout, findItem, findRoom, useEditorStore } from "@/store/editorStore";
+import {
+  activeLayout,
+  activeSuggestion,
+  findItem,
+  findRoom,
+  useEditorStore,
+} from "@/store/editorStore";
 
 function isTyping(target: EventTarget | null): boolean {
   return (
@@ -65,7 +71,8 @@ export function useShortcuts() {
             s.updateFurniture(item.id, { rotation: item.rotation + (e.shiftKey ? -90 : 90) });
         }
       } else if (key === "escape") {
-        if (s.tool !== "select") s.setTool("select");
+        if (activeSuggestion(s)) s.clearSuggestion();
+        else if (s.tool !== "select") s.setTool("select");
         else s.select(null);
       } else if ((key === "delete" || key === "backspace") && sel) {
         e.preventDefault();
