@@ -14,12 +14,11 @@ SQL Editor에서 마이그레이션을 **순서대로** 한 번씩 실행합니�
 1. [vercel.com](https://vercel.com)에서 **Add New → Project**로 GitHub 저장소 `room-studio`를 가져옵니다. Next.js·pnpm은 자동으로 잡힙니다.
 2. **Environment Variables**에 다음을 넣습니다 (Production, Preview 모두).
 
-   | 이름                                   | 값                                                         |
-   | -------------------------------------- | ---------------------------------------------------------- |
-   | `NEXT_PUBLIC_SUPABASE_URL`             | Supabase Project Settings → API의 Project URL              |
-   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | 같은 곳의 publishable 키 (`sb_publishable_…`)              |
-   | `NEXT_PUBLIC_SITE_URL`                 | `<배포 주소>` — 공유 링크 미리보기 이미지 주소에 쓰임      |
-   | `NEXT_PUBLIC_ENABLE_EMAIL_LOGIN`       | 넣지 않음. 별도 메일 서버(아래 5번)를 연결한 뒤에만 `true` |
+   | 이름                                   | 값                                                    |
+   | -------------------------------------- | ----------------------------------------------------- |
+   | `NEXT_PUBLIC_SUPABASE_URL`             | Supabase Project Settings → API의 Project URL         |
+   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | 같은 곳의 publishable 키 (`sb_publishable_…`)         |
+   | `NEXT_PUBLIC_SITE_URL`                 | `<배포 주소>` — 공유 링크 미리보기 이미지 주소에 쓰임 |
 
 3. 배포할 브랜치를 정합니다. 지금 작업은 `dev`에 있으므로 `main`에 합친 뒤 배포하거나, Vercel의 Production Branch를 `dev`로 바꿉니다.
 
@@ -51,15 +50,7 @@ https://<project-ref>.supabase.co/auth/v1/callback
 
 콘솔 화면 이름은 바뀔 수 있으니 막히면 Supabase 공식 안내를 함께 보세요: [Sign in with Kakao](https://supabase.com/docs/guides/auth/social-login/auth-kakao).
 
-## 5. (선택) 이메일 로그인 켜기
-
-Supabase 기본 메일은 **시간당 2통, 조직 팀원에게만** 보내져서 공개 서비스에는 쓸 수 없습니다. 이메일 로그인을 열려면:
-
-1. Resend·AWS SES 같은 메일 발송 서비스를 Supabase Authentication → **SMTP Settings**에 연결합니다 (보내는 도메인 인증 필요).
-2. Authentication → Rate Limits에서 메일 한도를 확인합니다.
-3. Vercel 환경 변수 `NEXT_PUBLIC_ENABLE_EMAIL_LOGIN=true`를 넣고 다시 배포합니다.
-
-## 6. 배포 후 확인
+## 5. 배포 후 확인
 
 - [ ] 첫 화면이 열리고, 로그인 상태로 `/`에 가면 `/projects`로 이동
 - [ ] 카카오로 로그인 → 새 프로젝트 → 편집 후 "저장됨" → 새로고침해도 유지
