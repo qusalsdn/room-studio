@@ -518,6 +518,9 @@ export const useEditorStore = create<EditorState>()(
           mode: "furniture",
           tool: "select",
         });
+        // 새 가구는 둘 만한 자리를 바로 보여 준다 (자리를 못 찾으면 조용히 넘어간다)
+        get().suggestFor(item.id, true);
+        if (!get().suggestion?.spots.length) set({ suggestion: null });
         return item.id;
       },
       updateFurniture: (itemId, patch) => {

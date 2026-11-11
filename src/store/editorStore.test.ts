@@ -239,6 +239,22 @@ describe("layouts", () => {
     expect(findItem(s().doc, drawer)).toMatchObject({ x: 2000, y: 400 });
   });
 
+  it("shows suggestions right away for newly added furniture", () => {
+    const s = () => store.getState();
+    // 방이 없으면 추천도 없다
+    s().addFurniture("chair", { x: 500, y: 500 });
+    expect(s().suggestion).toBeNull();
+
+    s().addRoom("방", rectPoints(0, 0, 4000, 3000));
+    s().addFurniture("desk", { x: 2000, y: 300 });
+    const chair = s().addFurniture("chair", { x: 3500, y: 2500 })!;
+    const sug = activeSuggestion(s())!;
+    expect(sug).toMatchObject({ itemId: chair, isNew: true });
+    expect(sug.spots[0].reasons).toContain("책상 앞");
+    // 가구는 놓은 자리에 그대로 있다
+    expect(findItem(s().doc, chair)).toMatchObject({ x: 3500, y: 2500 });
+  });
+
   it("rotates the whole house 90° with furniture in every layout", () => {
     const s = store.getState;
     const roomId = s().addRoom("방", rectPoints(0, 0, 4000, 2000));
