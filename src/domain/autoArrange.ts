@@ -92,7 +92,7 @@ export function roomOf(item: FurnitureItem, rooms: Room[]): Room | undefined {
   return best;
 }
 
-type Candidate = { x: number; y: number; rotation: number };
+export type Candidate = { x: number; y: number; rotation: number };
 
 /** 등(로컬 -y)을 벽에 대는 자리들 */
 function wallCandidates(item: FurnitureItem, room: Room): Candidate[] {
@@ -311,12 +311,66 @@ function placeOne(
   placed: FurnitureItem[],
   pending: FurnitureItem[],
 ): Candidate | null {
-  const raw = [...baseCandidates(item, room), ...ruleTargets(item, placed)];
+  const best = rankSpots(doc, room, item, placed, { pending, limit: 1 })[0];
+  return best ? { x: best.x, y: best.y, rotation: best.rotation } : null;
+}
+
+export type RankedSpot = Candidate & {
+  /** 작을수록 좋음 (이동 + 규칙 + 늘어난 경고) */
+  cost: number;
+  /** 이 자리에 놓으면 늘어나는 경고 수 */
+  addedWarnings: number;
+};
+
+export type RankOptions = {
+  /** 아직 놓지 않은 짝 가구 (자동 배치에서만) */
+  pending?: FurnitureItem[];
+  /** 돌려줄 자리 수 */
+  limit?: number;
+  /** 원래 자리에서 옮기는 비용 배율 (새 가구는 놓은 자리가 대충이라 작게) */
+  moveWeight?: number;
+  /** 이 자리 하나만 평가한다 (지금 자리의 비용을 같은 기준으로 구할 때) */
+  only?: Candidate;
+};
+
+/** 서로 이만큼 가깝고 방향이 같으면 같은 자리로 본다 (후보를 여러 개 보여 줄 때) */
+const SAME_SPOT = 500;
+
+function sameSpot(a: Candidate, b: Candidate): boolean {
+  return distance(a, b) < SAME_SPOT && rotationDiff(a.rotation, b.rotation) === 0;
+}
+
+/** 비용이 낮은 순서로, 서로 다른 자리만 limit개 */
+function distinctBest(spots: RankedSpot[], limit: number): RankedSpot[] {
+  const out: RankedSpot[] = [];
+  for (const s of [...spots].sort((a, b) => a.cost - b.cost)) {
+    if (out.some((o) => sameSpot(o, s))) continue;
+    out.push(s);
+    if (out.length === limit) break;
+  }
+  return out;
+}
+
+/**
+ * placed 사이에 item을 놓을 수 있는 자리를 좋은 순서로. 오류를 새로 만드는 자리는 뺀다.
+ * limit개가 넘으면 서로 가까운 자리는 하나만 남긴다.
+ */
+export function rankSpots(
+  doc: Doc,
+  room: Room,
+  item: FurnitureItem,
+  placed: FurnitureItem[],
+  options: RankOptions = {},
+): RankedSpot[] {
+  const { pending = [], limit = 1, moveWeight = 1, only } = options;
+  const raw = only
+    ? [{ x: only.x, y: only.y, rotation: only.rotation }]
+    : [...baseCandidates(item, room), ...ruleTargets(item, placed)];
   const ctx = { room, openings: doc.floorplan.openings, placed, pending };
   // 이동 비용 + 규칙 비용은 경고 검사 없이 싸게 구할 수 있어서, 이것으로 정렬해 가지치기한다
   const lowerBound = (c: Candidate) =>
-    distance(c, item) / 10 +
-    (rotationDiff(c.rotation, item.rotation) ? ROTATE_COST : 0) +
+    moveWeight *
+      (distance(c, item) / 10 + (rotationDiff(c.rotation, item.rotation) ? ROTATE_COST : 0)) +
     ruleCost({ ...item, ...c }, ctx);
   const candidates = raw.map((c) => ({ c, lb: lowerBound(c) })).sort((a, b) => a.lb - b.lb);
 
@@ -324,11 +378,12 @@ function placeOne(
   const solidParts = solids.map(partsOf);
   const base = countBySeverity(checkLayout(doc, placed));
 
-  let best: Candidate | null = null;
-  let bestCost = Infinity;
+  const found: RankedSpot[] = [];
+  let best: RankedSpot[] = [];
   let evals = 0;
   for (const { c, lb } of candidates) {
-    if (lb >= bestCost || evals >= MAX_EVALS) break;
+    const bound = best.length === limit ? best[limit - 1].cost : Infinity;
+    if (lb >= bound || evals >= MAX_EVALS) break;
     const moved = { ...item, ...c };
     const parts = partsOf(moved);
     // 싼 검사 먼저: 방 안에 들어가고 다른 가구와 겹치지 않는지
@@ -337,10 +392,11 @@ function placeOne(
     evals++;
     const after = countBySeverity(checkLayout(doc, [...placed, moved]));
     if (after.error > base.error) continue;
-    const cost = lb + Math.max(0, after.warning - base.warning) * WARNING_COST;
-    if (cost < bestCost) {
-      bestCost = cost;
-      best = c;
+    const addedWarnings = Math.max(0, after.warning - base.warning);
+    const spot = { ...c, cost: lb + addedWarnings * WARNING_COST, addedWarnings };
+    if (spot.cost < bound) {
+      found.push(spot);
+      best = limit === 1 ? [spot] : distinctBest(found, limit);
     }
   }
   return best;
