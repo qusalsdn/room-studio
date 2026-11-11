@@ -382,6 +382,17 @@ export const FURNITURE_CATALOG: CatalogItem[] = [
     placement: "keep",
   },
   {
+    id: "bath-mat",
+    name: "욕실 발매트",
+    category: "etc",
+    width: 600,
+    depth: 400,
+    height: 10,
+    color: "#a8c5d1",
+    symbol: "rug",
+    placement: "keep",
+  },
+  {
     id: "crib",
     name: "베이비 침대",
     category: "bed",
