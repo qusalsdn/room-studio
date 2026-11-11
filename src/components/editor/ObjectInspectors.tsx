@@ -6,6 +6,7 @@ import { MIN_OPENING_WIDTH, OPENING_LABELS } from "@/geometry/openings";
 import { edgeLength } from "@/geometry/polygon";
 import { activeLayout, useEditorStore } from "@/store/editorStore";
 import { Button, LengthField, Section, Segmented, TextField } from "./fields";
+import { ReplaceSection } from "./ReplaceSection";
 import { SuggestionSection } from "./SuggestionSection";
 import { WarningsSection } from "./WarningsSection";
 
@@ -30,6 +31,8 @@ export function FurnitureInspector({ item }: { item: FurnitureItem }) {
       </Section>
 
       <WarningsSection itemId={item.id} />
+
+      <ReplaceSection item={item} />
 
       <SuggestionSection itemId={item.id} />
 

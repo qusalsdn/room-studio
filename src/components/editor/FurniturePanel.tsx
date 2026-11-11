@@ -34,7 +34,12 @@ function viewCenter() {
   return { x: Math.round((cx - x) / scale / 10) * 10, y: Math.round((cy - y) / scale / 10) * 10 };
 }
 
-function Thumb({ item }: { item: CatalogItem }) {
+/** 카탈로그 가구의 작은 평면 모양 (목록용) */
+export function Thumb({
+  item,
+}: {
+  item: Pick<CatalogItem, "width" | "depth" | "color" | "symbol">;
+}) {
   const max = Math.max(item.width, item.depth);
   const w = (item.width / max) * 28;
   const h = (item.depth / max) * 28;
