@@ -5,7 +5,7 @@ import type { FurnitureItem, Opening, Room } from "@/domain/document";
 import { MIN_OPENING_WIDTH, OPENING_LABELS } from "@/geometry/openings";
 import { edgeLength } from "@/geometry/polygon";
 import { activeLayout, useEditorStore } from "@/store/editorStore";
-import { Button, LengthField, Section, TextField } from "./fields";
+import { Button, LengthField, Section, Segmented, TextField } from "./fields";
 import { WarningsSection } from "./WarningsSection";
 
 const fieldLabel = "flex flex-col gap-1 text-xs text-neutral-600";
@@ -131,20 +131,18 @@ export function OpeningInspector({ opening, room }: { opening: Opening; room: Ro
   return (
     <>
       <Section title={`${OPENING_LABELS[opening.kind]} · ${room.name} 벽 ${opening.edgeIndex + 1}`}>
-        <label className={fieldLabel}>
+        <div className={fieldLabel}>
           종류
-          <select
+          <Segmented
+            ariaLabel="문·창문 종류"
             value={opening.kind}
-            onChange={(e) => update({ kind: e.currentTarget.value as Opening["kind"] })}
-            className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm"
-          >
-            {Object.entries(OPENING_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </label>
+            onChange={(kind) => update({ kind })}
+            options={(Object.keys(OPENING_LABELS) as Opening["kind"][]).map((k) => ({
+              value: k,
+              label: OPENING_LABELS[k],
+            }))}
+          />
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <label className={fieldLabel}>
             폭

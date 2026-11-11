@@ -7,6 +7,7 @@ import { checkLayout, countBySeverity } from "@/domain/warnings";
 import { formatLength } from "@/lib/format";
 import { activeLayout, currentLayout, useEditorStore } from "@/store/editorStore";
 import { StaticPlan, type PlanArrow, type PlanItem } from "@/components/plan/StaticPlan";
+import { Dropdown } from "./fields";
 
 type Mode = "side" | "overlay";
 
@@ -78,20 +79,12 @@ export function CompareView() {
     s.setView("2d");
   };
 
+  const layoutOptions = doc.layouts.map((l) => ({
+    value: l.id,
+    label: l.isCurrent ? `${l.name} (현재)` : l.name,
+  }));
   const select = (value: string, onChange: (id: string) => void, label: string) => (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.currentTarget.value)}
-      aria-label={label}
-      className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm"
-    >
-      {doc.layouts.map((l) => (
-        <option key={l.id} value={l.id}>
-          {l.name}
-          {l.isCurrent ? " (현재)" : ""}
-        </option>
-      ))}
-    </select>
+    <Dropdown value={value} onChange={onChange} options={layoutOptions} ariaLabel={label} />
   );
 
   return (

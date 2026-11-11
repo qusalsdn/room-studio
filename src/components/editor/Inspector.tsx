@@ -6,7 +6,7 @@ import { removeVertex, setEdgeLength, splitEdge } from "@/geometry/roomEdit";
 import { MIN_EDGE } from "@/geometry/roomEdit";
 import { formatArea } from "@/lib/format";
 import { findItem, selectedRoomId, useEditorStore } from "@/store/editorStore";
-import { Button, LengthField, Section, TextField } from "./fields";
+import { Button, LengthField, Section, Segmented, TextField } from "./fields";
 import {
   FurnitureInspector,
   FurnitureListSection,
@@ -92,20 +92,19 @@ function HouseInspector() {
             onCommit={(mm) => s().setSettings({ minPassage: Math.min(mm, 2000) })}
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs text-neutral-600">
+        <div className="flex flex-col gap-1 text-xs text-neutral-600">
           표시 단위
-          <select
+          <Segmented
+            ariaLabel="표시 단위"
             value={settings.displayUnit}
-            onChange={(e) =>
-              s().setSettings({ displayUnit: e.currentTarget.value as typeof settings.displayUnit })
-            }
-            className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm"
-          >
-            <option value="cm">cm</option>
-            <option value="mm">mm</option>
-            <option value="m">m</option>
-          </select>
-        </label>
+            onChange={(displayUnit) => s().setSettings({ displayUnit })}
+            options={[
+              { value: "cm", label: "cm" },
+              { value: "mm", label: "mm" },
+              { value: "m", label: "m" },
+            ]}
+          />
+        </div>
       </Section>
 
       {mode === "furniture" && <WarningsSection />}

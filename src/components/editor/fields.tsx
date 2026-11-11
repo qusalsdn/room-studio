@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { DisplayUnit } from "@/domain/units";
 import { fromMm, toMm } from "@/lib/format";
 
@@ -132,5 +132,138 @@ export function Button({
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * 선택지가 몇 개 안 될 때 쓰는 버튼 묶음.
+ * 네이티브 select는 일부 환경에서 팝업이 엉뚱한 위치에 떠서 쓰지 않는다.
+ */
+export function Segmented<T extends string | number>({
+  value,
+  onChange,
+  options,
+  ariaLabel,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string; title?: string }[];
+  ariaLabel: string;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={ariaLabel}
+      className="flex divide-x divide-neutral-300 rounded-md border border-neutral-300 text-sm"
+    >
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          title={o.title}
+          aria-pressed={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={`flex-1 px-2 py-1 whitespace-nowrap first:rounded-l-md last:rounded-r-md ${value === o.value ? "bg-blue-50 font-medium text-blue-700" : "text-neutral-600 hover:bg-neutral-50"}`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * 선택지가 많거나 늘어날 수 있을 때 쓰는 드롭다운. 네이티브 select 대신 직접 그린다.
+ */
+export function Dropdown<T extends string>({
+  value,
+  onChange,
+  options,
+  ariaLabel,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string }[];
+  ariaLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const current = options.find((o) => o.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener("pointerdown", onDown);
+    return () => window.removeEventListener("pointerdown", onDown);
+  }, [open]);
+
+  const show = () => {
+    setActive(
+      Math.max(
+        0,
+        options.findIndex((o) => o.value === value),
+      ),
+    );
+    setOpen(true);
+  };
+  const choose = (v: T) => {
+    onChange(v);
+    setOpen(false);
+  };
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => (open ? setOpen(false) : show())}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && open) {
+            e.stopPropagation();
+            setOpen(false);
+          } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            e.preventDefault();
+            if (!open) return show();
+            const step = e.key === "ArrowDown" ? 1 : -1;
+            setActive((i) => (i + step + options.length) % options.length);
+          } else if ((e.key === "Enter" || e.key === " ") && open) {
+            e.preventDefault();
+            const o = options[active];
+            if (o) choose(o.value);
+          }
+        }}
+        className="flex max-w-56 items-center gap-1.5 rounded-md border border-neutral-300 bg-white py-1 pr-1.5 pl-2 text-sm hover:bg-neutral-50"
+      >
+        <span className="truncate">{current?.label ?? ""}</span>
+        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0 text-neutral-500" aria-hidden>
+          <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" />
+        </svg>
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          aria-label={ariaLabel}
+          className="absolute top-full left-0 z-20 mt-1 max-h-64 min-w-full overflow-y-auto rounded-md border border-neutral-200 bg-white py-1 text-sm shadow-lg"
+        >
+          {options.map((o, i) => (
+            <li
+              key={o.value}
+              role="option"
+              aria-selected={o.value === value}
+              onPointerEnter={() => setActive(i)}
+              onClick={() => choose(o.value)}
+              className={`cursor-pointer px-3 py-1.5 whitespace-nowrap ${i === active ? "bg-neutral-100" : ""} ${o.value === value ? "font-medium text-blue-700" : "text-neutral-800"}`}
+            >
+              {o.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
