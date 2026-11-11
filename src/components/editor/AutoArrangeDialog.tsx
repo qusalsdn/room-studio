@@ -163,7 +163,9 @@ function AutoArrangeDialog({ onClose }: { onClose: () => void }) {
             <div className="flex min-h-0 flex-col gap-1.5">
               <span className="font-medium">
                 그대로 둘 가구{" "}
-                <span className="font-normal text-neutral-500">(러그는 항상 그대로)</span>
+                <span className="font-normal text-neutral-500">
+                  (바닥에 까는 것(러그·발매트)은 항상 그대로)
+                </span>
               </span>
               {movable.length === 0 ? (
                 <p className="text-neutral-500">이 방에는 옮길 가구가 없어요.</p>
