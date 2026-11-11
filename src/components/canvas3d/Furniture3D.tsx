@@ -418,6 +418,103 @@ export function Furniture3D({ item, selected, onSelect }: Props) {
         ))}
       </>
     );
+  } else if (item.catalogId === "office-chair") {
+    // 사무용 의자: 바퀴 달린 다섯 갈래 받침 + 가스 실린더 + 방석 + 팔걸이 + 뒤로 살짝 누운 등받이·머리받침 (뒤가 -z)
+    const metal = "#3f3f46";
+    const reach = Math.min(w, d) / 2 - 0.03; // 받침 다리 길이
+    const seatY = Math.min(0.48, h * 0.44);
+    const seatT = 0.08;
+    const seatW = Math.min(w * 0.78, 0.52);
+    const seatD = Math.min(d * 0.78, 0.5);
+    const head = h > 0.95 ? Math.min(0.16, (h - seatY) * 0.2) : 0;
+    const backBottom = seatY + seatT / 2 + 0.06;
+    const backH = Math.max(h - backBottom - head - (head ? 0.04 : 0), 0.1);
+    const tilt = -0.12;
+    const backZ = -seatD / 2 + 0.03;
+    body = (
+      <>
+        {/* 다섯 갈래 받침과 바퀴 */}
+        {Array.from({ length: 5 }, (_, i) => {
+          const a = (i / 5) * Math.PI * 2;
+          return (
+            <group key={i} rotation={[0, a, 0]}>
+              <Box
+                size={[0.045, 0.035, reach]}
+                position={[0, 0.075, reach / 2]}
+                color={metal}
+                selected={s}
+                edges={false}
+              />
+              <mesh position={[0, 0.03, reach - 0.01]} rotation={[0, 0, Math.PI / 2]} castShadow>
+                <cylinderGeometry args={[0.028, 0.028, 0.03, 16]} />
+                <Mat color="#18181b" />
+              </mesh>
+            </group>
+          );
+        })}
+        {/* 가스 실린더 */}
+        <mesh position={[0, (0.09 + seatY) / 2, 0]} castShadow>
+          <cylinderGeometry args={[0.022, 0.032, seatY - 0.09, 16]} />
+          <Mat color={metal} selected={s} />
+        </mesh>
+        {/* 방석 */}
+        <Box
+          size={[seatW, seatT, seatD]}
+          position={[0, seatY, 0.02]}
+          color={color}
+          selected={s}
+        />
+        {/* 등받이 지지대 */}
+        <Box
+          size={[0.05, backBottom - seatY + 0.1, 0.03]}
+          position={[0, (seatY + backBottom + 0.1) / 2, backZ - 0.04]}
+          color={metal}
+          edges={false}
+        />
+        {/* 등받이와 머리받침: 방석 뒤 끝을 축으로 살짝 뒤로 젖힘 */}
+        <group position={[0, backBottom, backZ]} rotation={[tilt, 0, 0]}>
+          <Box
+            size={[seatW * 0.95, backH, 0.06]}
+            position={[0, backH / 2, 0]}
+            color={color}
+            selected={s}
+          />
+          {head > 0 && (
+            <>
+              <Box
+                size={[0.04, 0.06, 0.02]}
+                position={[0, backH + 0.03, -0.01]}
+                color={metal}
+                edges={false}
+              />
+              <Box
+                size={[seatW * 0.55, head, 0.06]}
+                position={[0, backH + 0.04 + head / 2, 0]}
+                color={color}
+                selected={s}
+              />
+            </>
+          )}
+        </group>
+        {/* 팔걸이 */}
+        {[-1, 1].map((sx) => (
+          <group key={`a${sx}`} position={[sx * (seatW / 2 + 0.02), seatY, 0]}>
+            <Box
+              size={[0.03, 0.2, 0.03]}
+              position={[0, 0.1, -0.02]}
+              color={metal}
+              edges={false}
+            />
+            <Box
+              size={[0.06, 0.03, seatD * 0.55]}
+              position={[0, 0.215, -0.02]}
+              color={dark}
+              selected={s}
+            />
+          </group>
+        ))}
+      </>
+    );
   } else if (symbol === "bed") {
     const base = h * 0.5;
     const mattress = h - base;
