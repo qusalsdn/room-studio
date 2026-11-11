@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ROOM_PRESETS } from "@/catalog/roomPresets";
+import { autoArrange } from "@/domain/autoArrange";
 import { createEmptyDocument } from "@/domain/document";
 import { rectPoints } from "@/geometry/roomEdit";
 import { activeLayout, useEditorStore } from "@/store/editorStore";
@@ -186,8 +187,10 @@ describe("layouts", () => {
     s().addFurniture("drawer", { x: 2000, y: 1500 });
     const before = structuredClone(s().doc.layouts[0].items);
 
-    const { layoutId, unplaced } = s().autoArrangeLayout();
+    const arrange = () => autoArrange(s().doc, activeLayout(s().doc).items);
+    const { items, unplaced } = arrange();
     expect(unplaced).toEqual([]);
+    const layoutId = s().addArrangedLayout(items);
     expect(s().doc.layouts.map((l) => l.name)).toEqual(["현재 배치", "자동 배치 1"]);
     expect(s().doc.editingLayoutId).toBe(layoutId);
     expect(s().doc.layouts[0].items).toEqual(before);
@@ -196,7 +199,7 @@ describe("layouts", () => {
     expect(activeLayout(s().doc).items).not.toEqual(before);
 
     // 자동 배치한 배치안에서 다시 돌리면 이름이 겹치지 않는다
-    s().autoArrangeLayout();
+    s().addArrangedLayout(arrange().items);
     expect(s().doc.layouts.at(-1)!.name).toBe("자동 배치 2");
 
     // 한 번의 실행 취소로 되돌린다

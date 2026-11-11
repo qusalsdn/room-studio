@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { placementOf, roomOf } from "@/domain/autoArrange";
 import { checkLayout } from "@/domain/warnings";
+import { runAutoArrange } from "@/lib/runAutoArrange";
 import { activeLayout, selectedRoomId, useEditorStore } from "@/store/editorStore";
 import { Button, Dropdown, Segmented } from "./fields";
 
@@ -51,12 +52,15 @@ function AutoArrangeDialog({ onClose }: { onClose: () => void }) {
   const [roomId, setRoomId] = useState(initialRoom ?? "");
   const [fixed, setFixed] = useState<Set<string>>(new Set());
   const [done, setDone] = useState<Done | null>(null);
+  const [busy, setBusy] = useState(false);
+  // 배치하는 동안에는 닫지 않는다 (결과가 닫힌 뒤에 배치안으로 생기면 헷갈린다)
+  const close = () => !busy && onClose();
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !busy && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, busy]);
 
   const movable = useMemo(
     () =>
@@ -75,27 +79,29 @@ function AutoArrangeDialog({ onClose }: { onClose: () => void }) {
       return next;
     });
 
-  const run = () => {
-    const s = useEditorStore.getState();
+  const run = async () => {
+    setBusy(true);
     const before = checkLayout(doc, layout.items).length;
-    const { unplaced } = s.autoArrangeLayout({
+    const { items, unplaced } = await runAutoArrange(doc, layout.items, {
       fixedIds: [...fixed],
       roomIds: scope === "room" ? [roomId] : undefined,
     });
-    const next = useEditorStore.getState().doc;
-    const result = activeLayout(next);
+    const s = useEditorStore.getState();
+    s.addArrangedLayout(items);
+    const result = activeLayout(useEditorStore.getState().doc);
+    setBusy(false);
     setDone({
       layoutName: result.name,
-      unplaced: unplaced.map((id) => result.items.find((i) => i.id === id)?.name ?? id),
+      unplaced: unplaced.map((id) => items.find((i) => i.id === id)?.name ?? id),
       before,
-      after: checkLayout(next, result.items).length,
+      after: checkLayout(doc, items).length,
     });
   };
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 p-4"
-      onPointerDown={(e) => e.target === e.currentTarget && onClose()}
+      onPointerDown={(e) => e.target === e.currentTarget && close()}
     >
       <div
         role="dialog"
@@ -201,14 +207,18 @@ function AutoArrangeDialog({ onClose }: { onClose: () => void }) {
             </>
           ) : (
             <>
-              <Button onClick={onClose}>취소</Button>
+              <Button onClick={close} disabled={busy}>
+                취소
+              </Button>
               <Button
                 variant="primary"
                 autoFocus
-                disabled={movable.length === 0 || movable.every(({ item }) => fixed.has(item.id))}
-                onClick={run}
+                disabled={
+                  busy || movable.length === 0 || movable.every(({ item }) => fixed.has(item.id))
+                }
+                onClick={() => void run()}
               >
-                자동 배치하기
+                {busy ? "배치하는 중…" : "자동 배치하기"}
               </Button>
             </>
           )}

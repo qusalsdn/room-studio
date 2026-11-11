@@ -52,10 +52,11 @@ const errors = (d: ReturnType<typeof doc>, items: FurnitureItem[]) =>
 function backOnWall(item: FurnitureItem): boolean {
   const b = itemBounds(item);
   const r = ((item.rotation % 360) + 360) % 360;
-  if (r === 0) return b.minY === 0;
-  if (r === 90) return b.maxX === 4000;
-  if (r === 180) return b.maxY === 3000;
-  if (r === 270) return b.minX === 0;
+  const at = (v: number, wall: number) => Math.abs(v - wall) < 1;
+  if (r === 0) return at(b.minY, 0);
+  if (r === 90) return at(b.maxX, 4000);
+  if (r === 180) return at(b.maxY, 3000);
+  if (r === 270) return at(b.minX, 0);
   return false;
 }
 
@@ -236,5 +237,63 @@ describe("autoArrange rules", () => {
     const b = itemBounds(bed);
     const inLine = b.minX < 1100 && b.maxX > 200 && b.minY < 1500;
     expect(inLine).toBe(false);
+  });
+});
+
+describe("autoArrange refinement", () => {
+  it("does better than a single greedy pass on a crowded 84㎡ house", async () => {
+    const { generateHouse } = await import("@/catalog/generateHouse");
+    const { createEmptyDocument, createRoom } = await import("@/domain/document");
+    const { centroid } = await import("@/geometry/polygon");
+    const g = generateHouse({
+      area: 84,
+      unit: "m2",
+      basis: "exclusive",
+      bedrooms: 3,
+      bathrooms: 2,
+    });
+    if (!g.ok) throw new Error(g.reason);
+    const house = createEmptyDocument();
+    house.floorplan.rooms = g.preset.rooms.map((r, i) => createRoom(r.name, r.points, i));
+    // 방마다 가구를 가운데 한 점에 쌓아 둔다
+    const items = house.floorplan.rooms.flatMap((r) => {
+      const c = centroid(r.points);
+      const at = (id: string) => put(id, Math.round(c.x), Math.round(c.y));
+      if (r.name === "거실") {
+        return [
+          "sofa-3",
+          "tv-stand",
+          "coffee-table",
+          "dining-4",
+          "chair",
+          "chair",
+          "chair",
+          "chair",
+          "bookshelf",
+          "plant",
+          "sink",
+          "fridge",
+        ].map(at);
+      }
+      if (r.name.startsWith("침실") || r.name === "안방") {
+        return ["bed-queen", "nightstand", "nightstand", "wardrobe", "desk", "office-chair"].map(
+          at,
+        );
+      }
+      return [];
+    });
+    expect(items.length).toBe(30);
+
+    const count = (out: FurnitureItem[]) => countBySeverity(checkLayout(house, out));
+    const greedy = autoArrange(house, items, { refine: false });
+    const t0 = performance.now();
+    const refined = autoArrange(house, items);
+    const ms = performance.now() - t0;
+
+    expect(refined.unplaced).toEqual([]);
+    expect(count(refined.items).error).toBe(0);
+    expect(count(refined.items).warning).toBeLessThan(count(greedy.items).warning);
+    // 워커에서 돌리지만 너무 오래 걸리지는 않아야 한다
+    expect(ms).toBeLessThan(4000);
   });
 });
