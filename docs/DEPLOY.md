@@ -35,23 +35,13 @@ Authentication → **URL Configuration**
   - `http://localhost:4000/auth/callback` (개발용)
   - Vercel 미리보기 배포에서도 로그인하려면 `https://*-<vercel 팀 이름>.vercel.app/auth/callback`
 
-## 4. 소셜 로그인
+## 4. 카카오 로그인
 
-두 서비스 모두 로그인 후 돌아오는 주소(Redirect URI)는 **우리 사이트가 아니라 Supabase 주소**입니다.
+로그인은 카카오만 씁니다 (예전에 Supabase Providers에서 Google을 켜 두었다면 꺼 주세요). 로그인 후 돌아오는 주소(Redirect URI)는 **우리 사이트가 아니라 Supabase 주소**입니다.
 
 ```
 https://<project-ref>.supabase.co/auth/v1/callback
 ```
-
-### Google
-
-1. [Google Cloud Console](https://console.cloud.google.com/)에서 프로젝트를 만들고 **OAuth 동의 화면**을 설정합니다 (외부 사용자, 앱 이름 "Room Studio", 지원 이메일, 범위 `email`·`profile`·`openid`). 공개 전에는 테스트 사용자로 등록한 계정만 로그인할 수 있습니다.
-2. **사용자 인증 정보 → OAuth 클라이언트 ID** → 유형 **웹 애플리케이션**
-   - 승인된 JavaScript 원본: `<배포 주소>`, `http://localhost:4000`
-   - 승인된 리디렉션 URI: `https://<project-ref>.supabase.co/auth/v1/callback`
-3. 만들어진 **클라이언트 ID·보안 비밀**을 Supabase Authentication → Providers → **Google**에 넣고 켭니다.
-
-### 카카오
 
 1. [Kakao Developers](https://developers.kakao.com/)에서 애플리케이션을 추가합니다.
 2. **플랫폼 → Web**에 사이트 도메인(`<배포 주소>`, `http://localhost:4000`)을 등록합니다.
@@ -59,7 +49,7 @@ https://<project-ref>.supabase.co/auth/v1/callback
 4. **동의항목**에서 닉네임·프로필 사진을 켭니다. 이메일(`account_email`)은 비즈 앱 전환이 필요할 수 있습니다. 이메일을 받지 않으면 Supabase의 Kakao 설정에서 **Allow users without an email**을 켭니다.
 5. **앱 키(REST API 키)** 와 **카카오 로그인 Client Secret**(활성화 필요)을 Supabase Authentication → Providers → **Kakao**의 Client ID·Client Secret에 넣고 켭니다.
 
-콘솔 화면 이름은 바뀔 수 있으니 막히면 Supabase 공식 안내를 함께 보세요: [Sign in with Google](https://supabase.com/docs/guides/auth/social-login/auth-google), [Sign in with Kakao](https://supabase.com/docs/guides/auth/social-login/auth-kakao).
+콘솔 화면 이름은 바뀔 수 있으니 막히면 Supabase 공식 안내를 함께 보세요: [Sign in with Kakao](https://supabase.com/docs/guides/auth/social-login/auth-kakao).
 
 ## 5. (선택) 이메일 로그인 켜기
 
@@ -72,7 +62,7 @@ Supabase 기본 메일은 **시간당 2통, 조직 팀원에게만** 보내져�
 ## 6. 배포 후 확인
 
 - [ ] 첫 화면이 열리고, 로그인 상태로 `/`에 가면 `/projects`로 이동
-- [ ] Google·카카오로 로그인 → 새 프로젝트 → 편집 후 "저장됨" → 새로고침해도 유지
+- [ ] 카카오로 로그인 → 새 프로젝트 → 편집 후 "저장됨" → 새로고침해도 유지
 - [ ] 로그인 전 `/editor`에서 그린 집이 "계정으로 가져오기"로 옮겨짐
 - [ ] 공유 링크를 로그인 안 한 창에서 열기, 메신저에 붙였을 때 미리보기 이미지
 - [ ] 링크를 끊으면 404와 "공유 링크를 찾을 수 없어요"

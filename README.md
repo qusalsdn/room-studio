@@ -22,7 +22,7 @@ pnpm build
 
 ## 배포
 
-[docs/DEPLOY.md](docs/DEPLOY.md) — Supabase 마이그레이션, Vercel 환경 변수, Google·카카오 로그인 설정, 배포 후 확인 목록.
+[docs/DEPLOY.md](docs/DEPLOY.md) — Supabase 마이그레이션, Vercel 환경 변수, 카카오 로그인 설정, 배포 후 확인 목록.
 
 ## 구조
 

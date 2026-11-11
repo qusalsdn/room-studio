@@ -6,8 +6,6 @@ import { useState } from "react";
 import { getSupabase } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
-type Provider = "google" | "kakao";
-
 /**
  * 이메일 로그인 링크: Supabase 기본 메일은 시간당 2통·팀원에게만 보내지므로
  * 개발 중이거나, 별도 메일 서버(SMTP)를 연결하고 NEXT_PUBLIC_ENABLE_EMAIL_LOGIN=true일 때만 보인다.
@@ -45,10 +43,10 @@ export function LoginForm() {
     );
   }
 
-  const oauth = async (provider: Provider) => {
+  const kakaoLogin = async () => {
     setError(null);
     const { error } = await getSupabase().auth.signInWithOAuth({
-      provider,
+      provider: "kakao",
       options: { redirectTo: callbackUrl() },
     });
     if (error) setError(error.message);
@@ -83,14 +81,7 @@ export function LoginForm() {
       <div className="mt-6 flex flex-col gap-2">
         <button
           type="button"
-          onClick={() => oauth("google")}
-          className="rounded-lg border border-neutral-300 bg-white px-4 py-2.5 text-sm font-medium hover:bg-neutral-50"
-        >
-          Google로 계속하기
-        </button>
-        <button
-          type="button"
-          onClick={() => oauth("kakao")}
+          onClick={kakaoLogin}
           className="rounded-lg bg-[#FEE500] px-4 py-2.5 text-sm font-medium text-black/85 hover:brightness-95"
         >
           카카오로 계속하기
