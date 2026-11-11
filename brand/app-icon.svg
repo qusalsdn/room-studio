@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- 배경: 사이트 주 색상(blue-600). 모서리는 각 서비스가 알아서 둥글게 자르므로 꽉 채운다 -->
+  <rect width="512" height="512" fill="#2563eb"/>
+
+  <!-- 방 평면도: 벽(아래쪽에 문 자리를 비움) -->
+  <path d="M 222 392 H 112 V 112 H 400 V 392 H 330"
+        fill="none" stroke="#ffffff" stroke-width="28" stroke-linecap="square" stroke-linejoin="miter"/>
+  <!-- 문: 여닫이 호 -->
+  <path d="M 236 392 A 80 80 0 0 1 316 312" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="10"/>
+  <line x1="316" y1="392" x2="316" y2="312" stroke="#ffffff" stroke-opacity="0.55" stroke-width="10"/>
+
+  <!-- 원래 자리(점선)에서 새 자리로 옮긴 가구 -->
+  <rect x="152" y="152" width="92" height="140" rx="14"
+        fill="none" stroke="#bfdbfe" stroke-width="8" stroke-dasharray="18 12"/>
+  <rect x="268" y="152" width="92" height="140" rx="14" fill="#ffffff"/>
+  <rect x="284" y="168" width="60" height="30" rx="8" fill="#bfdbfe"/>
+</svg>
