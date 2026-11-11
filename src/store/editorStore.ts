@@ -24,7 +24,7 @@ import {
   reattachOpenings,
 } from "@/geometry/openings";
 import { bounds, edgeLength, isSimplePolygon } from "@/geometry/polygon";
-import { translatePoints } from "@/geometry/roomEdit";
+import { rotatePoint90, translatePoints } from "@/geometry/roomEdit";
 
 const HISTORY_LIMIT = 100;
 
@@ -121,6 +121,8 @@ export type EditorState = {
   setRoomColor: (roomId: string, color: string) => void;
   deleteRoom: (roomId: string) => void;
   applyPreset: (preset: RoomPreset) => void;
+  /** 집 전체(방·문·창·모든 배치안의 가구)를 90° 회전. dir 1 = 시계방향 */
+  rotateHouse: (dir: 1 | -1) => void;
   setHouseName: (name: string) => void;
   setSettings: (settings: Partial<HouseDocument["settings"]>) => void;
   resetDocument: () => void;
@@ -367,6 +369,30 @@ export const useEditorStore = create<EditorState>()(
           });
           set({ selection: { kind: "room", roomId: lastId } });
         }
+        get().requestFit();
+      },
+      rotateHouse: (dir) => {
+        const rooms = get().doc.floorplan.rooms;
+        if (rooms.length === 0) return;
+        const b = bounds(rooms.flatMap((r) => r.points));
+        const center = {
+          x: Math.round((b.minX + b.maxX) / 2),
+          y: Math.round((b.minY + b.maxY) / 2),
+        };
+        // 점 순서와 방향이 그대로라 문·창(변 번호·거리·경첩)은 손댈 필요 없다
+        get().apply((d) => {
+          for (const room of d.floorplan.rooms) {
+            room.points = room.points.map((p) => rotatePoint90(p, center, dir));
+          }
+          for (const layout of d.layouts) {
+            for (const item of layout.items) {
+              const p = rotatePoint90(item, center, dir);
+              item.x = p.x;
+              item.y = p.y;
+              item.rotation = normalizeAngle(item.rotation + dir * 90);
+            }
+          }
+        });
         get().requestFit();
       },
       setHouseName: (name) => {

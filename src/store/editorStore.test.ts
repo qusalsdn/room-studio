@@ -178,4 +178,38 @@ describe("layouts", () => {
     s().deleteLayout(baseId); // 마지막 하나는 지울 수 없음
     expect(s().doc.layouts).toHaveLength(1);
   });
+
+  it("rotates the whole house 90° with furniture in every layout", () => {
+    const s = store.getState;
+    const roomId = s().addRoom("방", rectPoints(0, 0, 4000, 2000));
+    const doorId = s().addOpening(roomId, 0, "hinged-door")!;
+    const bed = s().addFurniture("bed-queen", { x: 1000, y: 500 })!;
+    const other = s().addLayout();
+    s().switchLayout(other);
+
+    s().rotateHouse(1);
+    const doc = s().doc;
+    // 중심 (2000, 1000) 기준 시계방향: (0,0) → (3000,-1000)
+    expect(doc.floorplan.rooms[0].points).toEqual([
+      { x: 3000, y: -1000 },
+      { x: 3000, y: 3000 },
+      { x: 1000, y: 3000 },
+      { x: 1000, y: -1000 },
+    ]);
+    expect(doc.floorplan.openings.find((o) => o.id === doorId)?.edgeIndex).toBe(0);
+    for (const layout of doc.layouts) {
+      const item = layout.items.find((i) => i.id === bed)!;
+      expect({ x: item.x, y: item.y, rotation: item.rotation }).toEqual({
+        x: 2500,
+        y: 0,
+        rotation: 90,
+      });
+    }
+
+    s().rotateHouse(-1);
+    expect(s().doc.floorplan.rooms[0].points).toEqual(rectPoints(0, 0, 4000, 2000));
+    s().undo();
+    s().undo();
+    expect(s().doc.floorplan.rooms[0].points).toEqual(rectPoints(0, 0, 4000, 2000));
+  });
 });

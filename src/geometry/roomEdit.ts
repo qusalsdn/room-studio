@@ -34,6 +34,16 @@ export function translatePoints(points: Vec2[], delta: Vec2): Vec2[] {
 }
 
 /**
+ * center를 기준으로 90° 회전. dir 1은 화면에서 시계방향(y축이 아래), -1은 반시계방향.
+ * center가 정수면 결과도 정수 좌표로 남는다.
+ */
+export function rotatePoint90(p: Vec2, center: Vec2, dir: 1 | -1): Vec2 {
+  const dx = p.x - center.x;
+  const dy = p.y - center.y;
+  return roundPoint({ x: center.x - dir * dy, y: center.y + dir * dx });
+}
+
+/**
  * 꼭짓점 이동. ortho가 켜져 있으면 이웃 꼭짓점도 함께 움직여서
  * 원래 수평/수직이던 변이 계속 수평/수직이 되게 한다.
  */

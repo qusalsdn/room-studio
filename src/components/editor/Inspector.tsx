@@ -59,6 +59,19 @@ function HouseInspector() {
         <p className="text-sm text-neutral-700">
           방 {doc.floorplan.rooms.length}개 · 합계 {formatArea(totalArea)}
         </p>
+        {mode === "structure" && doc.floorplan.rooms.length > 0 && (
+          <div className="flex flex-col gap-1 text-xs text-neutral-600">
+            집 전체 회전 (가구도 함께)
+            <div className="flex gap-1">
+              <Button onClick={() => s().rotateHouse(-1)} title="반시계방향으로 90° 회전">
+                ↺ 90°
+              </Button>
+              <Button onClick={() => s().rotateHouse(1)} title="시계방향으로 90° 회전">
+                ↻ 90°
+              </Button>
+            </div>
+          </div>
+        )}
       </Section>
 
       <Section title="설정">
