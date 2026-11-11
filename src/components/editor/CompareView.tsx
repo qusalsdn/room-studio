@@ -262,6 +262,8 @@ function ChangeList({
       id: m.id,
       name: m.name,
       detail: [
+        m.replaced ? `${m.from.name}에서 교체` : null,
+        m.renamed ? `이름 바뀜 (${m.from.name})` : null,
         m.distance > 20 ? `${formatLength(Math.round(m.distance), unit)} 이동` : null,
         m.rotated
           ? `${Math.round(Math.abs(((m.to.rotation - m.from.rotation + 540) % 360) - 180))}° 회전`

@@ -13,6 +13,10 @@ export type MovedItem = {
   distance: number;
   rotated: boolean;
   resized: boolean;
+  /** 다른 가구로 교체됨 (카탈로그 종류가 바뀜) */
+  replaced: boolean;
+  /** 같은 종류인데 이름만 바뀜 (직접 만든 가구를 다른 것으로 바꾼 경우 포함) */
+  renamed: boolean;
 };
 
 export type LayoutDiff = {
@@ -46,8 +50,20 @@ export function diffLayouts(a: Pick<Layout, "items">, b: Pick<Layout, "items">):
     const distance = Math.hypot(to.x - from.x, to.y - from.y);
     const rotated = angleDelta(from.rotation, to.rotation) > ROTATE_EPS;
     const resized = from.width !== to.width || from.depth !== to.depth;
-    if (distance > MOVE_EPS || rotated || resized) {
-      diff.moved.push({ id: to.id, name: to.name, from, to, distance, rotated, resized });
+    const replaced = from.catalogId !== to.catalogId;
+    const renamed = !replaced && from.name !== to.name;
+    if (distance > MOVE_EPS || rotated || resized || replaced || renamed) {
+      diff.moved.push({
+        id: to.id,
+        name: to.name,
+        from,
+        to,
+        distance,
+        rotated,
+        resized,
+        replaced,
+        renamed,
+      });
     } else {
       diff.unchanged.push(to);
     }

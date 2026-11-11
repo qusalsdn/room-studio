@@ -39,6 +39,16 @@ describe("diffLayouts", () => {
     const d = diffLayouts({ items: [item("bed", 0, 0, 0)] }, { items: [item("bed", 0, 0, 90)] });
     expect(d.moved[0]).toMatchObject({ id: "bed", rotated: true, distance: 0 });
   });
+
+  it("flags a piece replaced in place, even with the same size", () => {
+    const desk = item("d", 0, 0);
+    const swapped = { ...desk, catalogId: "computer-desk", name: "컴퓨터 책상" };
+    const d = diffLayouts({ items: [desk] }, { items: [swapped] });
+    expect(d.moved[0]).toMatchObject({ replaced: true, renamed: false, distance: 0 });
+
+    const renamed = diffLayouts({ items: [desk] }, { items: [{ ...desk, name: "공부 책상" }] });
+    expect(renamed.moved[0]).toMatchObject({ replaced: false, renamed: true });
+  });
 });
 
 describe("nextLayoutName", () => {
