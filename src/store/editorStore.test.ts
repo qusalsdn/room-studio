@@ -3,7 +3,13 @@ import { ROOM_PRESETS } from "@/catalog/roomPresets";
 import { autoArrange } from "@/domain/autoArrange";
 import { createEmptyDocument } from "@/domain/document";
 import { rectPoints } from "@/geometry/roomEdit";
-import { activeLayout, activeSuggestion, findItem, useEditorStore } from "@/store/editorStore";
+import {
+  activeLayout,
+  activeReplaceNotice,
+  activeSuggestion,
+  findItem,
+  useEditorStore,
+} from "@/store/editorStore";
 
 const store = useEditorStore;
 
@@ -253,6 +259,53 @@ describe("layouts", () => {
     expect(sug.spots[0].reasons).toContain("책상 앞");
     // 가구는 놓은 자리에 그대로 있다
     expect(findItem(s().doc, chair)).toMatchObject({ x: 3500, y: 2500 });
+  });
+
+  it("replaces furniture in place, in one undo step, keeping the id", () => {
+    const s = () => store.getState();
+    s().addRoom("방", rectPoints(0, 0, 4000, 3000));
+    const wardrobe = s().addFurniture("wardrobe", { x: 2000, y: 300 })!;
+    const spec = {
+      catalogId: "jangnong",
+      name: "장롱",
+      width: 1800,
+      depth: 650,
+      height: 2100,
+      color: "#ccc",
+    };
+    s().replaceFurniture(wardrobe, spec);
+    expect(s().doc.layouts).toHaveLength(1);
+    expect(findItem(s().doc, wardrobe)).toMatchObject({ catalogId: "jangnong", y: 325 });
+    expect(activeReplaceNotice(s())).toMatchObject({ fromName: "옷장", fits: true });
+    expect(activeSuggestion(s())).toBeNull();
+
+    s().undo();
+    expect(findItem(s().doc, wardrobe)).toMatchObject({ catalogId: "wardrobe", y: 300 });
+    expect(activeReplaceNotice(s())).toBeNull();
+  });
+
+  it("can replace in a new layout and suggests spots when it does not fit", () => {
+    const s = () => store.getState();
+    s().addRoom("방", rectPoints(0, 0, 4000, 3000));
+    s().addFurniture("wardrobe", { x: 600, y: 300 });
+    const drawer = s().addFurniture("drawer", { x: 2400, y: 225 })!;
+    const wide = {
+      catalogId: "drawer",
+      name: "넓은 서랍장",
+      width: 2600,
+      depth: 450,
+      height: 900,
+      color: "#ccc",
+    };
+    s().replaceFurniture(drawer, wide, { newLayout: true });
+    expect(s().doc.layouts.map((l) => l.name)).toEqual(["현재 배치", "배치안 A"]);
+    expect(s().doc.layouts[0].items.find((i) => i.id === drawer)!.width).toBe(800);
+    expect(findItem(s().doc, drawer)!.width).toBe(2600);
+    expect(activeReplaceNotice(s())!.fits).toBe(false);
+    expect(activeSuggestion(s())!.spots.length).toBeGreaterThan(0);
+
+    s().undo();
+    expect(s().doc.layouts).toHaveLength(1);
   });
 
   it("rotates the whole house 90° with furniture in every layout", () => {

@@ -16,6 +16,7 @@ import {
   type Vec2,
 } from "@/domain/document";
 import { nextLayoutName } from "@/domain/layoutDiff";
+import { replaceItem, type ReplaceSpec } from "@/domain/replaceItem";
 import { suggestSpots, type Suggestion } from "@/domain/suggestSpots";
 import { normalizeAngle } from "@/geometry/furniture";
 import {
@@ -87,6 +88,17 @@ export type SuggestionState = {
   hovered: number | null;
 };
 
+/** 방금 한 가구 교체의 결과 (속성 패널에 안내로 보여 준다) */
+export type ReplaceNotice = {
+  itemId: string;
+  fromName: string;
+  fits: boolean;
+  problems: string[];
+  /** 자리가 어색해진 짝 가구 id */
+  related: string[];
+  forDoc: HouseDocument;
+};
+
 export type EditorState = {
   /** 클라우드 프로젝트 id. null이면 브라우저에 저장되는 게스트 문서 */
   projectId: string | null;
@@ -113,6 +125,7 @@ export type EditorState = {
   fitRequest: number;
   /** 가구 하나의 자리 추천 결과 (문서가 바뀌면 activeSuggestion이 더는 돌려주지 않는다) */
   suggestion: SuggestionState | null;
+  replaceNotice: ReplaceNotice | null;
 
   /** 클라우드 프로젝트 문서를 연다 (실행 취소 기록 초기화) */
   loadProject: (projectId: string, doc: HouseDocument) => void;
@@ -182,6 +195,13 @@ export type EditorState = {
   setViewport: (viewport: Viewport) => void;
   requestFit: () => void;
 
+  /**
+   * 가구를 다른 가구로 교체한다 (같은 id, 붙어 있던 면 기준). newLayout이면 배치안을 복제해서 거기서 바꾼다.
+   * 들어가지 않으면 자리 추천을 바로 보여 준다. 실행 취소 한 번으로 되돌린다.
+   */
+  replaceFurniture: (itemId: string, spec: ReplaceSpec, options?: { newLayout?: boolean }) => void;
+  clearReplaceNotice: () => void;
+
   // 자리 추천
   suggestFor: (itemId: string, isNew?: boolean) => void;
   applySuggestion: (index: number) => void;
@@ -213,6 +233,16 @@ export function activeSuggestion(
   if (!sug || sug.forDoc !== s.doc) return null;
   if (s.selection?.kind !== "furniture" || s.selection.itemId !== sug.itemId) return null;
   return sug;
+}
+
+/** 지금 보여 줄 교체 안내: 교체한 뒤 문서가 그대로이고 그 가구가 선택돼 있을 때만 */
+export function activeReplaceNotice(
+  s: Pick<EditorState, "replaceNotice" | "doc" | "selection">,
+): ReplaceNotice | null {
+  const n = s.replaceNotice;
+  if (!n || n.forDoc !== s.doc) return null;
+  if (s.selection?.kind !== "furniture" || s.selection.itemId !== n.itemId) return null;
+  return n;
 }
 
 export function findItem(doc: HouseDocument, itemId: string): FurnitureItem | undefined {
@@ -247,6 +277,7 @@ export const useEditorStore = create<EditorState>()(
       viewport: { scale: 0.1, x: 80, y: 80 },
       fitRequest: 0,
       suggestion: null,
+      replaceNotice: null,
 
       loadProject: (projectId, doc) => {
         set({
@@ -622,6 +653,42 @@ export const useEditorStore = create<EditorState>()(
       setViewport: (viewport) => set({ viewport }),
       requestFit: () => set({ fitRequest: get().fitRequest + 1 }),
 
+      replaceFurniture: (itemId, spec, options = {}) => {
+        const { doc } = get();
+        const source = activeLayout(doc);
+        const fromName = source.items.find((i) => i.id === itemId)?.name;
+        const result = replaceItem(doc, source.items, itemId, spec);
+        if (!result || fromName === undefined) return;
+        const items = source.items.map((i) => (i.id === itemId ? result.item : { ...i }));
+        get().apply((d) => {
+          if (options.newLayout) {
+            const layout: Layout = {
+              id: newId(),
+              name: nextLayoutName(d.layouts.map((l) => l.name)),
+              isCurrent: false,
+              items,
+            };
+            d.layouts.push(layout);
+            d.editingLayoutId = layout.id;
+          } else {
+            activeLayout(d).items = items;
+          }
+        });
+        set({ selection: { kind: "furniture", itemId }, mode: "furniture", tool: "select" });
+        if (!result.fits) get().suggestFor(itemId);
+        else set({ suggestion: null });
+        set({
+          replaceNotice: {
+            itemId,
+            fromName,
+            fits: result.fits,
+            problems: result.problems,
+            related: result.related,
+            forDoc: get().doc,
+          },
+        });
+      },
+      clearReplaceNotice: () => set({ replaceNotice: null }),
       suggestFor: (itemId, isNew = false) => {
         const { doc } = get();
         const result = suggestSpots(doc, activeLayout(doc).items, itemId, { isNew });

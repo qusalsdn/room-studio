@@ -94,6 +94,15 @@ describe("replaceItem", () => {
     expect(r.problems.join()).toContain("겹침");
   });
 
+  it("points out a chair left behind by a narrower desk swap", () => {
+    // 책상 앞 의자 → 책상을 왼쪽 모서리로 붙은 더 좁은 것으로 바꾸면 의자 자리가 어긋난다
+    const desk = put("desk", 600, 300);
+    const chair = put("chair", 600, 850);
+    expect(replaceItem(doc, [desk, chair], desk.id, spec("desk"))!.related).toEqual([]);
+    const r = replaceItem(doc, [desk, chair], desk.id, spec("desk", { width: 2000 }))!;
+    expect(r.related).toEqual([chair.id]);
+  });
+
   it("does not count problems that were already there", () => {
     const wardrobe = put("wardrobe", 600, 300);
     const drawer = put("drawer", 1000, 225); // 이미 옷장과 겹침

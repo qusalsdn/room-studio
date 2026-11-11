@@ -1,3 +1,4 @@
+import { ruleCost } from "@/domain/arrangeRules";
 import { roomOf, placementOf } from "@/domain/autoArrange";
 import type { FurnitureItem, HouseDocument, Vec2 } from "@/domain/document";
 import { checkLayout } from "@/domain/warnings";
@@ -25,7 +26,12 @@ export type ReplaceResult = {
   fits: boolean;
   /** 교체해서 새로 생긴 문제 (도면의 "확인할 점" 문구) */
   problems: string[];
+  /** 교체 때문에 자리가 어색해진 짝 가구 (책상 의자, 소파 앞 테이블, 침대 협탁 등) */
+  related: string[];
 };
+
+/** 짝 가구의 규칙 비용이 이만큼 넘게 나빠지면 다시 놓아 보라고 알린다 (1m 옮기기 = 100) */
+const RELATED_WORSE = 60;
 
 /** 이만큼 가까우면 붙어 있는 것으로 본다 (mm) */
 const FLUSH = 20;
@@ -112,5 +118,33 @@ export function replaceItem(
   const before = new Set(mine([...others, old]).map((w) => w.kind + w.itemIds.join()));
   // 교체 전에도 있던 문제(같은 종류, 같은 상대)는 새 문제로 치지 않는다
   const problems = mine([...others, item]).filter((w) => !before.has(w.kind + w.itemIds.join()));
-  return { item, fits: problems.length === 0, problems: problems.map((w) => w.message) };
+  return {
+    item,
+    fits: problems.length === 0,
+    problems: problems.map((w) => w.message),
+    related: relatedAfterReplace(doc, items, old, item),
+  };
+}
+
+/** 같은 방의 다른 가구 중 교체 뒤에 규칙 비용이 크게 나빠진 것 */
+function relatedAfterReplace(
+  doc: Doc,
+  items: FurnitureItem[],
+  old: FurnitureItem,
+  next: FurnitureItem,
+): string[] {
+  const rooms = doc.floorplan.rooms;
+  const room = roomOf(old, rooms);
+  if (!room) return [];
+  const inRoom = items.filter((i) => roomOf(i, rooms)?.id === room.id);
+  const costWith = (target: FurnitureItem, replaced: FurnitureItem) =>
+    ruleCost(target, {
+      room,
+      openings: doc.floorplan.openings,
+      placed: inRoom.filter((i) => i.id !== target.id).map((i) => (i.id === old.id ? replaced : i)),
+    });
+  return inRoom
+    .filter((i) => i.id !== old.id)
+    .filter((i) => costWith(i, next) - costWith(i, old) > RELATED_WORSE)
+    .map((i) => i.id);
 }
