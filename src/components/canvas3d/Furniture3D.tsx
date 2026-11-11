@@ -328,6 +328,96 @@ export function Furniture3D({ item, selected, onSelect }: Props) {
         })}
       </>
     );
+  } else if (item.catalogId === "vanity") {
+    // 화장대: 상판 + 왼쪽 서랍장 + 오른쪽 다리 + 뒤쪽에 세운 거울과 화장품 몇 개 (뒤가 -z, 앞이 +z)
+    const top = Math.min(0.03, h * 0.05);
+    const underH = h - top;
+    const cabW = Math.min(w * 0.36, 0.4);
+    const cabX = -w / 2 + cabW / 2;
+    const gap = 0.01;
+    const drawers = 3;
+    const drawerH = (underH - gap * (drawers + 1)) / drawers;
+    const leg = 0.035;
+    const mirrorW = Math.min(w * 0.6, 0.6);
+    const mirrorH = Math.min(0.75, mirrorW * 1.3);
+    const frame = 0.03;
+    const mirrorZ = -d / 2 + 0.04;
+    body = (
+      <>
+        {/* 상판 */}
+        <Box size={[w, top, d]} position={[0, h - top / 2, 0]} color={color} selected={s} />
+        {/* 왼쪽 서랍장 */}
+        <Box
+          size={[cabW, underH, d - 0.02]}
+          position={[cabX, underH / 2, -0.01]}
+          color={color}
+          selected={s}
+        />
+        {Array.from({ length: drawers }, (_, i) => {
+          const y = gap + drawerH / 2 + i * (drawerH + gap);
+          return (
+            <group key={i} position={[cabX, y, d / 2 - 0.02]}>
+              <Box
+                size={[cabW - gap * 2, drawerH, 0.012]}
+                position={[0, 0, 0.006]}
+                color={shade(color, 0.05)}
+                selected={s}
+              />
+              <Box
+                size={[Math.min(0.1, cabW * 0.4), 0.012, 0.015]}
+                position={[0, 0, 0.02]}
+                color="#a8a29e"
+                selected={s}
+                edges={false}
+              />
+            </group>
+          );
+        })}
+        {/* 오른쪽 다리 두 개 */}
+        {[-1, 1].map((sz) => (
+          <Box
+            key={sz}
+            size={[leg, underH, leg]}
+            position={[w / 2 - leg / 2 - 0.01, underH / 2, sz * (d / 2 - leg / 2 - 0.01)]}
+            color={dark}
+            edges={false}
+          />
+        ))}
+        {/* 열린 쪽 위의 얕은 서랍 (앞판) */}
+        <Box
+          size={[w - cabW - leg - 0.04, 0.08, 0.015]}
+          position={[(cabW - leg) / 2, h - top - 0.04, d / 2 - 0.02]}
+          color={shade(color, 0.05)}
+          selected={s}
+        />
+        {/* 거울: 틀 + 유리 */}
+        <Box
+          size={[mirrorW, mirrorH, frame]}
+          position={[0, h + mirrorH / 2, mirrorZ]}
+          color={dark}
+          selected={s}
+        />
+        <mesh position={[0, h + mirrorH / 2, mirrorZ + frame / 2 + 0.002]}>
+          <boxGeometry args={[mirrorW - 0.05, mirrorH - 0.05, 0.004]} />
+          <meshStandardMaterial color="#dbe4ea" roughness={0.08} metalness={0.6} />
+        </mesh>
+        {/* 화장품 */}
+        {[
+          [0.12, 0.09, "#f9a8d4"],
+          [0.18, 0.13, "#fde68a"],
+          [0.24, 0.07, "#e9d5ff"],
+        ].map(([x, ph, c], i) => (
+          <mesh
+            key={`c${i}`}
+            position={[(x as number) * Math.min(1, w / 0.8), h + (ph as number) / 2, d * 0.05]}
+            castShadow
+          >
+            <cylinderGeometry args={[0.02, 0.022, ph as number, 16]} />
+            <Mat color={c as string} />
+          </mesh>
+        ))}
+      </>
+    );
   } else if (symbol === "bed") {
     const base = h * 0.5;
     const mattress = h - base;
