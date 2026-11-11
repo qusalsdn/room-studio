@@ -515,6 +515,126 @@ export function Furniture3D({ item, selected, onSelect }: Props) {
         ))}
       </>
     );
+  } else if (item.catalogId === "massage-chair") {
+    // 안마의자: 낮은 받침 + 양옆 큰 팔걸이 몸체 + 방석 + 뒤로 누운 등받이와 머리 덮개 + 앞으로 내려가는 다리 받침 (뒤가 -z)
+    const shell = dark;
+    const cushion = shade(color, 0.14);
+    const baseH = 0.12;
+    const armW = Math.min(0.15, w * 0.19);
+    const innerW = Math.max(w - armW * 2, 0.1);
+    const seatY = Math.min(0.45, h * 0.38);
+    const seatT = 0.1;
+    const seatD = Math.min(0.5, d * 0.36);
+    const tilt = 0.35; // 등받이가 뒤로 누운 각도 (rad)
+    const backL = (h - seatY) / Math.cos(tilt);
+    // 방석 뒤 끝: 누운 등받이(뒤판 두께 포함)가 가구 깊이 밖으로 나가지 않게
+    const z0 = -d / 2 + Math.min(backL * Math.sin(tilt) + 0.25 * Math.cos(tilt), d * 0.42);
+    const zf = z0 + seatD; // 방석 앞 끝
+    const legDz = Math.max(d / 2 - zf - 0.03, 0.05);
+    const legDy = seatY - baseH - 0.04;
+    const legLen = Math.hypot(legDz, legDy);
+    const legAngle = Math.atan2(legDy, legDz);
+    const armH = Math.min(0.72, h * 0.6);
+    const armZ0 = z0 - 0.08;
+    const armZ1 = zf + 0.06;
+    const hood = Math.min(0.26, backL * 0.3);
+    body = (
+      <>
+        {/* 받침 */}
+        <Box
+          size={[w * 0.7, baseH, d * 0.8]}
+          position={[0, baseH / 2, 0]}
+          color={shade(color, -0.22)}
+          edges={false}
+        />
+        {/* 양옆 팔걸이 몸체 */}
+        {[-1, 1].map((sx) => (
+          <group key={`a${sx}`} position={[sx * (w / 2 - armW / 2), 0, (armZ0 + armZ1) / 2]}>
+            <Box
+              size={[armW, armH, armZ1 - armZ0]}
+              position={[0, armH / 2, 0]}
+              color={shell}
+              selected={s}
+            />
+            <Box
+              size={[armW * 0.8, 0.03, (armZ1 - armZ0) * 0.7]}
+              position={[0, armH + 0.015, 0.02]}
+              color={cushion}
+              selected={s}
+              edges={false}
+            />
+          </group>
+        ))}
+        {/* 리모컨 */}
+        <Box
+          size={[0.05, 0.03, 0.12]}
+          position={[w / 2 - armW / 2, armH + 0.045, armZ1 - 0.12]}
+          color="#e7e5e4"
+          edges={false}
+        />
+        {/* 방석 */}
+        <Box
+          size={[innerW, seatT, seatD]}
+          position={[0, seatY - seatT / 2, (z0 + zf) / 2]}
+          color={cushion}
+          selected={s}
+        />
+        <Box
+          size={[innerW, seatY - seatT - baseH + 0.01, seatD]}
+          position={[0, (seatY - seatT + baseH) / 2, (z0 + zf) / 2]}
+          color={shell}
+          edges={false}
+        />
+        {/* 등받이 + 어깨 날개 + 머리 덮개 */}
+        <group position={[0, seatY, z0]} rotation={[-tilt, 0, 0]}>
+          <Box
+            size={[innerW, backL, 0.14]}
+            position={[0, backL / 2, -0.07]}
+            color={cushion}
+            selected={s}
+          />
+          <Box
+            size={[w * 0.92, backL * 0.9, 0.1]}
+            position={[0, backL * 0.45 + 0.02, -0.19]}
+            color={shell}
+            selected={s}
+          />
+          {[-1, 1].map((sx) => (
+            <Box
+              key={`w${sx}`}
+              size={[(w * 0.92 - innerW) / 2, backL * 0.55, 0.2]}
+              position={[sx * (innerW / 2 + (w * 0.92 - innerW) / 4), backL * 0.62, -0.06]}
+              color={shell}
+              selected={s}
+            />
+          ))}
+          <Box
+            size={[w * 0.92, hood, 0.3]}
+            position={[0, backL - hood / 2 + 0.04, -0.04]}
+            color={shell}
+            selected={s}
+          />
+        </group>
+        {/* 다리 받침 (종아리 홈 두 개) */}
+        <group position={[0, seatY - seatT / 2, zf]} rotation={[legAngle, 0, 0]}>
+          {[-1, 1].map((sx) => (
+            <Box
+              key={`l${sx}`}
+              size={[innerW / 2 - 0.02, 0.12, legLen]}
+              position={[sx * (innerW / 4), 0, legLen / 2]}
+              color={cushion}
+              selected={s}
+            />
+          ))}
+          <Box
+            size={[innerW + 0.04, 0.1, legLen]}
+            position={[0, -0.09, legLen / 2]}
+            color={shell}
+            selected={s}
+          />
+        </group>
+      </>
+    );
   } else if (symbol === "bed") {
     const base = h * 0.5;
     const mattress = h - base;
