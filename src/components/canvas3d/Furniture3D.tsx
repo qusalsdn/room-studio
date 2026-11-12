@@ -7,9 +7,10 @@ import * as THREE from "three";
 import { findCatalogItem } from "@/catalog/furniture";
 import type { FurnitureItem } from "@/domain/document";
 import { lShapeLocal } from "@/geometry/furniture";
+import { Box, EDGE, Mat, shade } from "./parts";
+import { STORAGE_3D, StorageBody } from "./storage3d";
 
 const M = 1 / 1000;
-const EDGE = "#78716c";
 
 /** 다리 달린 테이블처럼 그릴 가구 */
 const TABLE_LIKE = new Set([
@@ -30,56 +31,6 @@ type Props = {
   selected: boolean;
   onSelect?: (e: ThreeEvent<MouseEvent>) => void;
 };
-
-function Mat({
-  color,
-  selected,
-  opacity,
-}: {
-  color: string;
-  selected?: boolean;
-  opacity?: number;
-}) {
-  return (
-    <meshStandardMaterial
-      color={color}
-      roughness={0.85}
-      emissive={selected ? "#2563eb" : "#000000"}
-      emissiveIntensity={selected ? 0.25 : 0}
-      transparent={opacity !== undefined}
-      opacity={opacity ?? 1}
-    />
-  );
-}
-
-/** 가로·깊이·높이 m 단위의 상자. 바닥 기준이 아니라 중심 기준 */
-function Box({
-  size,
-  position,
-  color,
-  selected,
-  edges = true,
-  opacity,
-}: {
-  size: [number, number, number];
-  position: [number, number, number];
-  color: string;
-  selected?: boolean;
-  edges?: boolean;
-  opacity?: number;
-}) {
-  return (
-    <mesh position={position} castShadow receiveShadow>
-      <boxGeometry args={size} />
-      <Mat color={color} selected={selected} opacity={opacity} />
-      {edges && <Edges color={EDGE} threshold={20} />}
-    </mesh>
-  );
-}
-
-function shade(hex: string, amount: number): string {
-  return `#${new THREE.Color(hex).offsetHSL(0, 0, amount).getHexString()}`;
-}
 
 export function Furniture3D({ item, selected, onSelect }: Props) {
   const c = findCatalogItem(item.catalogId);
@@ -183,6 +134,8 @@ export function Furniture3D({ item, selected, onSelect }: Props) {
         ))}
       </>
     );
+  } else if (STORAGE_3D.has(item.catalogId)) {
+    body = <StorageBody id={item.catalogId} w={w} d={d} h={h} color={color} dark={dark} s={s} />;
   } else if (item.catalogId === "crib") {
     // 베이비 침대: 네 기둥 + 위아래 난간 + 긴 쪽 세로 살 + 짧은 쪽 막힌 판, 안에 매트리스
     const post = Math.min(0.05, w * 0.08, d * 0.08);
@@ -230,7 +183,11 @@ export function Furniture3D({ item, selected, onSelect }: Props) {
             {Array.from({ length: longSlats }, (_, i) => (
               <mesh
                 key={i}
-                position={[-innerW / 2 + (innerW / (longSlats + 1)) * (i + 1), deck + rail + slatH / 2, 0]}
+                position={[
+                  -innerW / 2 + (innerW / (longSlats + 1)) * (i + 1),
+                  deck + rail + slatH / 2,
+                  0,
+                ]}
                 castShadow
               >
                 <cylinderGeometry args={[0.011, 0.011, slatH, 10]} />
@@ -458,12 +415,7 @@ export function Furniture3D({ item, selected, onSelect }: Props) {
           <Mat color={metal} selected={s} />
         </mesh>
         {/* 방석 */}
-        <Box
-          size={[seatW, seatT, seatD]}
-          position={[0, seatY, 0.02]}
-          color={color}
-          selected={s}
-        />
+        <Box size={[seatW, seatT, seatD]} position={[0, seatY, 0.02]} color={color} selected={s} />
         {/* 등받이 지지대 */}
         <Box
           size={[0.05, backBottom - seatY + 0.1, 0.03]}
@@ -499,12 +451,7 @@ export function Furniture3D({ item, selected, onSelect }: Props) {
         {/* 팔걸이 */}
         {[-1, 1].map((sx) => (
           <group key={`a${sx}`} position={[sx * (seatW / 2 + 0.02), seatY, 0]}>
-            <Box
-              size={[0.03, 0.2, 0.03]}
-              position={[0, 0.1, -0.02]}
-              color={metal}
-              edges={false}
-            />
+            <Box size={[0.03, 0.2, 0.03]} position={[0, 0.1, -0.02]} color={metal} edges={false} />
             <Box
               size={[0.06, 0.03, seatD * 0.55]}
               position={[0, 0.215, -0.02]}
