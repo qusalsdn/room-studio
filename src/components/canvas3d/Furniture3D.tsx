@@ -8,7 +8,7 @@ import { findCatalogItem } from "@/catalog/furniture";
 import type { FurnitureItem } from "@/domain/document";
 import { lShapeLocal } from "@/geometry/furniture";
 import { Box, EDGE, Mat, shade } from "./parts";
-import { STORAGE_3D, StorageBody } from "./storage3d";
+import { MODELS_3D } from "./models3d";
 
 const M = 1 / 1000;
 
@@ -50,8 +50,11 @@ export function Furniture3D({ item, selected, onSelect }: Props) {
     return new THREE.Shape(pts);
   }, [symbol, item.width, item.depth]);
 
+  const Model = MODELS_3D[item.catalogId];
   let body: ReactNode;
-  if (symbol === "l-shape" && lShape) {
+  if (Model) {
+    body = <Model w={w} d={d} h={h} color={color} dark={dark} s={s} />;
+  } else if (symbol === "l-shape" && lShape) {
     const top = 0.04;
     const legs = lShapeLocal(item.width, item.depth)
       .filter((_, i) => i !== 3)
@@ -134,8 +137,6 @@ export function Furniture3D({ item, selected, onSelect }: Props) {
         ))}
       </>
     );
-  } else if (STORAGE_3D.has(item.catalogId)) {
-    body = <StorageBody id={item.catalogId} w={w} d={d} h={h} color={color} dark={dark} s={s} />;
   } else if (item.catalogId === "crib") {
     // 베이비 침대: 네 기둥 + 위아래 난간 + 긴 쪽 세로 살 + 짧은 쪽 막힌 판, 안에 매트리스
     const post = Math.min(0.05, w * 0.08, d * 0.08);
